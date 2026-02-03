@@ -1,0 +1,484 @@
+<%- include('partials/head') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'anti-blocking' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <h1 class="text-lg font-semibold text-gray-900">Anti-Blocking Settings</h1>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Configure strategies to prevent TikTok blocks</p>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Settings Form -->
+                <form id="antiBlockingForm" class="space-y-4">
+                    <!-- Quick Retry on Block Detection Section -->
+                    <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <h3 class="text-sm font-semibold text-blue-900 uppercase tracking-wide">Quick Retry on Block Detection</h3>
+                        </div>
+                        <p class="text-xs text-blue-800 mb-4">
+                            When a block is detected, immediately retry connections to check if it's a temporary issue. If retry succeeds, cooldown timers are cancelled and monitoring resumes normally.
+                        </p>
+                        
+                        <div class="bg-white rounded p-3 border border-blue-200">
+                            <div class="mb-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        id="enableQuickRetry" 
+                                        name="enableQuickRetry"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
+                                    >
+                                    <span class="text-sm font-medium text-gray-900">Enable Quick Retry</span>
+                                </label>
+                                <p class="text-xs text-gray-600 mt-1 ml-6">
+                                    Automatically retry connections when a block is detected. If successful, cooldown timers are cancelled. <strong>Recommended: Enabled</strong>.
+                                </p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quickRetrySettings">
+                                <div>
+                                    <label for="quickRetryAttempts" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                        Number of Retry Attempts
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        id="quickRetryAttempts" 
+                                        name="quickRetryAttempts"
+                                        min="1" 
+                                        max="10" 
+                                        step="1"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                    >
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        How many times to retry before giving up. <strong>Recommended: 2-3 attempts</strong>.
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <label for="quickRetryIntervalMinutes" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                        Retry Interval (minutes)
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        id="quickRetryIntervalMinutes" 
+                                        name="quickRetryIntervalMinutes"
+                                        min="1" 
+                                        max="30" 
+                                        step="1"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                    >
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Wait time between retry attempts. <strong>Recommended: 5-10 minutes</strong>. Longer waits reduce risk but delay recovery.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Polling Intervals Section -->
+                    <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Polling Intervals</h3>
+                        <p class="text-xs text-gray-600 mb-4">
+                            Control how frequently the system checks if accounts are live. Lower intervals mean more frequent checks but higher risk of blocks.
+                        </p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="pollIntervalOffline" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Offline Check Interval (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="pollIntervalOffline" 
+                                    name="pollIntervalOffline"
+                                    min="5" 
+                                    max="60" 
+                                    step="1"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    How often to check offline accounts. <strong>Recommended: 10-15 minutes</strong>. Lower values increase block risk.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label for="pollIntervalOnline" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Online Check Interval (seconds)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="pollIntervalOnline" 
+                                    name="pollIntervalOnline"
+                                    min="30" 
+                                    max="300" 
+                                    step="10"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    How often to check live accounts. <strong>Recommended: 60-120 seconds</strong>. More frequent checks may trigger blocks.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cooldown Strategy Section -->
+                    <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Cooldown Strategy</h3>
+                        <p class="text-xs text-gray-600 mb-4">
+                            When an account is blocked, the system automatically enters a cooldown period. Configure how the cooldown duration increases with each block.
+                        </p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="cooldownBaseHours" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Base Cooldown (hours)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="cooldownBaseHours" 
+                                    name="cooldownBaseHours"
+                                    min="1" 
+                                    max="24" 
+                                    step="1"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Initial cooldown for first block. <strong>Recommended: 1-2 hours</strong>. First block duration.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label for="cooldownMaxHours" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Maximum Cooldown (hours)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="cooldownMaxHours" 
+                                    name="cooldownMaxHours"
+                                    min="24" 
+                                    max="168" 
+                                    step="24"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Maximum cooldown duration. <strong>Recommended: 72 hours (3 days)</strong>. Caps exponential growth.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    id="enableAutoCooldown" 
+                                    name="enableAutoCooldown"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
+                                >
+                                <span class="text-xs font-medium text-gray-700 uppercase tracking-wide">Enable Auto-Cooldown</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1 ml-6">
+                                Automatically pause monitoring for blocked accounts during cooldown period. <strong>Recommended: Enabled</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Recovery Section -->
+                    <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Auto-Recovery Testing</h3>
+                        <p class="text-xs text-gray-600 mb-4">
+                            The system can automatically test if a block has been lifted after a period of time.
+                        </p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="recoveryTestDelayHours" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Recovery Test Delay (hours)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="recoveryTestDelayHours" 
+                                    name="recoveryTestDelayHours"
+                                    min="1" 
+                                    max="24" 
+                                    step="1"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Wait time before testing if block is lifted. <strong>Recommended: 2-4 hours</strong>. Too early may retrigger blocks.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label for="recoveryTestIntervalHours" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">
+                                    Recovery Test Interval (hours)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="recoveryTestIntervalHours" 
+                                    name="recoveryTestIntervalHours"
+                                    min="1" 
+                                    max="12" 
+                                    step="1"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm metric-value focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">
+                                    How often to retry recovery test if still blocked. <strong>Recommended: 2-4 hours</strong>.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    id="enableAutoRecovery" 
+                                    name="enableAutoRecovery"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
+                                >
+                                <span class="text-xs font-medium text-gray-700 uppercase tracking-wide">Enable Auto-Recovery</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1 ml-6">
+                                Automatically test and resume monitoring when blocks are lifted. <strong>Recommended: Enabled</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Block Detection Section -->
+                    <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Block Detection</h3>
+                        <p class="text-xs text-gray-600 mb-4">
+                            Configure how the system detects and responds to TikTok blocks.
+                        </p>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        id="stopMonitoringOnBlock" 
+                                        name="stopMonitoringOnBlock"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
+                                    >
+                                    <span class="text-xs font-medium text-gray-700 uppercase tracking-wide">Stop Active Monitoring on Block</span>
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1 ml-6">
+                                    Immediately stop monitoring live sessions when a block is detected. <strong>Recommended: Enabled</strong>.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        id="logBlockEvents" 
+                                        name="logBlockEvents"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
+                                    >
+                                    <span class="text-xs font-medium text-gray-700 uppercase tracking-wide">Log Block Events</span>
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1 ml-6">
+                                    Log all block detections to console logs for analysis. <strong>Recommended: Enabled</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center justify-end gap-3">
+                        <button 
+                            type="button" 
+                            onclick="resetToDefaults()" 
+                            class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
+                        >
+                            Reset to Defaults
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors"
+                        >
+                            Save Settings
+                        </button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+
+    <%- include('partials/toast-notifications') %>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async post(url, data) {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        // Toggle quick retry settings visibility
+        function toggleQuickRetrySettings() {
+            const enabled = document.getElementById('enableQuickRetry').checked;
+            const settingsDiv = document.getElementById('quickRetrySettings');
+            const inputs = settingsDiv.querySelectorAll('input[type="number"]');
+            
+            inputs.forEach(input => {
+                input.disabled = !enabled;
+                input.required = enabled;
+            });
+        }
+        
+        // Load settings on page load
+        async function loadSettings() {
+            try {
+                const settings = await api.get('/api/anti-blocking/settings');
+                
+                // Populate form fields
+                document.getElementById('enableQuickRetry').checked = settings.enableQuickRetry !== false;
+                document.getElementById('quickRetryAttempts').value = settings.quickRetryAttempts || 3;
+                document.getElementById('quickRetryIntervalMinutes').value = settings.quickRetryIntervalMinutes || 5;
+                document.getElementById('pollIntervalOffline').value = settings.pollIntervalOfflineMinutes || 10;
+                document.getElementById('pollIntervalOnline').value = settings.pollIntervalOnlineSeconds || 60;
+                document.getElementById('cooldownBaseHours').value = settings.cooldownBaseHours || 1;
+                document.getElementById('cooldownMaxHours').value = settings.cooldownMaxHours || 72;
+                document.getElementById('recoveryTestDelayHours').value = settings.recoveryTestDelayHours || 2;
+                document.getElementById('recoveryTestIntervalHours').value = settings.recoveryTestIntervalHours || 2;
+                document.getElementById('enableAutoCooldown').checked = settings.enableAutoCooldown !== false;
+                document.getElementById('enableAutoRecovery').checked = settings.enableAutoRecovery !== false;
+                document.getElementById('stopMonitoringOnBlock').checked = settings.stopMonitoringOnBlock !== false;
+                document.getElementById('logBlockEvents').checked = settings.logBlockEvents !== false;
+                
+                // Setup quick retry toggle
+                toggleQuickRetrySettings();
+                document.getElementById('enableQuickRetry').addEventListener('change', toggleQuickRetrySettings);
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                if (window.showError) {
+                    showError('Failed to load settings: ' + error.message);
+                }
+            }
+        }
+
+        // Save settings
+        document.getElementById('antiBlockingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                enableQuickRetry: document.getElementById('enableQuickRetry').checked,
+                quickRetryAttempts: parseInt(document.getElementById('quickRetryAttempts').value) || 3,
+                quickRetryIntervalMinutes: parseInt(document.getElementById('quickRetryIntervalMinutes').value) || 5,
+                pollIntervalOfflineMinutes: parseInt(document.getElementById('pollIntervalOffline').value),
+                pollIntervalOnlineSeconds: parseInt(document.getElementById('pollIntervalOnline').value),
+                cooldownBaseHours: parseInt(document.getElementById('cooldownBaseHours').value),
+                cooldownMaxHours: parseInt(document.getElementById('cooldownMaxHours').value),
+                recoveryTestDelayHours: parseInt(document.getElementById('recoveryTestDelayHours').value),
+                recoveryTestIntervalHours: parseInt(document.getElementById('recoveryTestIntervalHours').value),
+                enableAutoCooldown: document.getElementById('enableAutoCooldown').checked,
+                enableAutoRecovery: document.getElementById('enableAutoRecovery').checked,
+                stopMonitoringOnBlock: document.getElementById('stopMonitoringOnBlock').checked,
+                logBlockEvents: document.getElementById('logBlockEvents').checked
+            };
+            
+            try {
+                const saveButton = e.target.querySelector('button[type="submit"]');
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+                
+                await api.post('/api/anti-blocking/settings', formData);
+                
+                if (window.showSuccess) {
+                    showSuccess('Settings saved successfully! Changes will take effect on next polling cycle.');
+                } else {
+                    alert('Settings saved successfully!');
+                }
+                
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Settings';
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                if (window.showError) {
+                    showError('Failed to save settings: ' + error.message);
+                } else {
+                    alert('Failed to save settings: ' + error.message);
+                }
+                
+                const saveButton = e.target.querySelector('button[type="submit"]');
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Settings';
+            }
+        });
+
+        // Reset to defaults
+        async function resetToDefaults() {
+            if (!confirm('Are you sure you want to reset all settings to default values?')) {
+                return;
+            }
+            
+            const defaults = {
+                enableQuickRetry: true,
+                quickRetryAttempts: 3,
+                quickRetryIntervalMinutes: 5,
+                pollIntervalOfflineMinutes: 10,
+                pollIntervalOnlineSeconds: 60,
+                cooldownBaseHours: 1,
+                cooldownMaxHours: 72,
+                recoveryTestDelayHours: 2,
+                recoveryTestIntervalHours: 2,
+                enableAutoCooldown: true,
+                enableAutoRecovery: true,
+                stopMonitoringOnBlock: true,
+                logBlockEvents: true
+            };
+            
+            try {
+                await api.post('/api/anti-blocking/settings', defaults);
+                
+                // Reload form
+                await loadSettings();
+                
+                if (window.showSuccess) {
+                    showSuccess('Settings reset to defaults!');
+                } else {
+                    alert('Settings reset to defaults!');
+                }
+            } catch (error) {
+                console.error('Error resetting settings:', error);
+                if (window.showError) {
+                    showError('Failed to reset settings: ' + error.message);
+                } else {
+                    alert('Failed to reset settings: ' + error.message);
+                }
+            }
+        }
+
+        // Make resetToDefaults available globally
+        window.resetToDefaults = resetToDefaults;
+
+        // Load settings on page load
+        loadSettings();
+
+        function logout() {
+            window.location.href = '/api/auth/logout';
+        }
+    </script>
+</body>
+</html>

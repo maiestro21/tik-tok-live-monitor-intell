@@ -1,0 +1,77 @@
+<aside class="w-56 bg-gray-900 border-r border-gray-800 flex flex-col fixed h-full">
+    <div class="p-4 border-b border-gray-800">
+        <h2 class="text-lg font-bold text-white">T-intell</h2>
+    </div>
+    <nav class="flex-1 p-2 space-y-0.5 overflow-y-auto">
+        <a href="/dashboard" class="sidebar-link <%= currentPage === 'dashboard' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Dashboard
+        </a>
+        <a href="/tikusers" class="sidebar-link <%= currentPage === 'tikusers' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            T-Users
+        </a>
+        <a href="/live-view" class="sidebar-link <%= currentPage === 'live-view' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Live View
+        </a>
+        <a href="/history" class="sidebar-link <%= currentPage === 'history' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors ml-4">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            History
+        </a>
+        <a href="/search-all" class="sidebar-link <%= currentPage === 'search-all' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-red-400 font-semibold rounded transition-colors ml-4 border-l-2 border-red-500">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            Search All
+        </a>
+        <a href="/alerts" class="sidebar-link <%= currentPage === 'alerts' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            Alerts
+        </a>
+        <a href="/alerts-rules" class="sidebar-link <%= currentPage === 'alerts-rules' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors ml-4">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Alert Rules
+        </a>
+        <a href="/users" class="sidebar-link <%= currentPage === 'users' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+            Users
+        </a>
+        <a href="/anti-blocking" class="sidebar-link <%= currentPage === 'anti-blocking' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+            Anti-Blocking
+        </a>
+        <a href="/logs" class="sidebar-link <%= currentPage === 'logs' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Console Logs
+        </a>
+        <a href="/osint" class="sidebar-link <%= currentPage === 'osint' ? 'active' : '' %> flex items-center px-3 py-2 text-sm text-gray-300 rounded transition-colors">
+            <svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            OSINT
+        </a>
+    </nav>
+    <div class="p-3 border-t border-gray-800">
+        <button onclick="logout()" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded">Logout</button>
+    </div>
+</aside>

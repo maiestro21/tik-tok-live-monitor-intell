@@ -1,0 +1,8 @@
+    <script src="/js/fetch-helpers.js"></script>
+    <% if (typeof scripts !== 'undefined' && scripts) { %>
+        <% scripts.forEach(script => { %>
+            <script src="<%= script %>"></script>
+        <% }); %>
+    <% } %>
+</body>
+</html>

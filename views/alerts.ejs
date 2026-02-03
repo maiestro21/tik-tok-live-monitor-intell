@@ -1,0 +1,537 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'alerts' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Alerts</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Monitor & Manage Alerts</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="/alerts-rules" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                            Manage Rules
+                        </a>
+                        <button onclick="loadAlerts()" class="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Filters -->
+                <div class="bg-white border border-gray-200 rounded p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Filters</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+                        <!-- Status Filter -->
+                        <select id="statusFilter" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Status</option>
+                            <option value="new">New</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                        
+                        <!-- Severity Filter -->
+                        <select id="severityFilter" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Severity</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                        
+                        <!-- Date Range -->
+                        <div class="flex gap-2">
+                            <input type="date" id="dateFrom" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="date" id="dateTo" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- User Search -->
+                        <select id="userFilter" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Users</option>
+                        </select>
+                        
+                        <!-- Trigger Word Search -->
+                        <select id="triggerWordFilter" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Trigger Words</option>
+                        </select>
+                        
+                        <!-- Apply Button -->
+                        <button onclick="loadAlerts()" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors">
+                            Apply Filters
+                        </button>
+                        
+                        <!-- Download Excel Button -->
+                        <button id="downloadExcelBtn" class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerts Table -->
+                <div class="bg-white border border-gray-200 rounded overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-sm font-semibold text-gray-900">Alerts</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Trigger</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="7" class="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Conversation Modal -->
+    <div id="conversationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="closeConversationModal()">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Conversation Context</h3>
+                <button onclick="closeConversationModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="conversationContent" class="flex-1 overflow-y-auto p-6 space-y-2">
+                <div class="text-center text-gray-500 py-8">Loading conversation...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async put(url) {
+                const res = await fetch(url, { method: 'PUT', credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load users and trigger words for filters
+        async function loadFilterOptions() {
+            try {
+                // Load users
+                const accounts = await api.get('/api/tikusers');
+                const userFilter = document.getElementById('userFilter');
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.handle;
+                    option.textContent = `@${account.handle}`;
+                    userFilter.appendChild(option);
+                });
+                
+                // Load trigger words
+                const triggerWords = await api.get('/api/alerts/trigger-words');
+                const triggerWordFilter = document.getElementById('triggerWordFilter');
+                const uniqueWords = [...new Set(triggerWords.map(t => t.word))];
+                uniqueWords.forEach(word => {
+                    const option = document.createElement('option');
+                    option.value = word;
+                    option.textContent = word;
+                    triggerWordFilter.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+
+        async function loadAlerts() {
+            try {
+                const status = document.getElementById('statusFilter').value;
+                const severity = document.getElementById('severityFilter').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                const handle = document.getElementById('userFilter').value;
+                const triggerWord = document.getElementById('triggerWordFilter').value;
+                
+                let url = '/api/alerts?';
+                const params = new URLSearchParams();
+                if (status) params.append('status', status);
+                if (severity) params.append('severity', severity);
+                if (dateFrom) params.append('dateFrom', dateFrom);
+                if (dateTo) params.append('dateTo', dateTo);
+                if (handle) params.append('handle', handle);
+                if (triggerWord) params.append('triggerWord', triggerWord);
+                
+                url += params.toString();
+                
+                const alerts = await api.get(url);
+                const tbody = document.getElementById('alertsTableBody');
+                
+                if (alerts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-center text-gray-500">No alerts found</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = alerts.map(alert => {
+                    const severityClass = { 
+                        low: 'bg-blue-100 text-blue-800', 
+                        medium: 'bg-yellow-100 text-yellow-800', 
+                        high: 'bg-red-100 text-red-800' 
+                    }[alert.severity] || 'bg-gray-100 text-gray-800';
+                    
+                    const statusClass = { 
+                        new: 'text-red-600 font-medium', 
+                        acknowledged: 'text-yellow-600', 
+                        resolved: 'text-green-600' 
+                    }[alert.status] || 'text-gray-600';
+                    
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-3 py-2 text-gray-900">${new Date(alert.timestamp).toLocaleString()}</td>
+                            <td class="px-3 py-2 font-medium text-gray-900">@${escapeHtml(alert.handle)}</td>
+                            <td class="px-3 py-2">
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs">${escapeHtml(alert.triggerWord || 'N/A')}</code>
+                            </td>
+                            <td class="px-3 py-2 text-gray-600" title="${escapeHtml(alert.message || '')}">
+                                ${escapeHtml((alert.message || '').substring(0, 50))}${(alert.message || '').length > 50 ? '...' : ''}
+                            </td>
+                            <td class="px-3 py-2">
+                                <span class="px-2 py-1 text-xs font-medium rounded ${severityClass}">
+                                    ${(alert.severity || 'medium').toUpperCase()}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 ${statusClass}">${alert.status}</td>
+                            <td class="px-3 py-2">
+                                <div class="flex items-center gap-1">
+                                    <button onclick="viewConversation('${alert.id}', '${alert.sessionId || ''}', event)" 
+                                            data-alert-id="${alert.id}"
+                                            data-message="${escapeHtml(alert.message || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, ' ').replace(/\r/g, '')}" 
+                                            data-trigger="${escapeHtml(alert.triggerWord || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}"
+                                            class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" 
+                                            title="View conversation context">
+                                        View
+                                    </button>
+                                    ${alert.status === 'new' ? `<button onclick="acknowledgeAlert('${alert.id}')" class="px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors">Ack</button>` : ''}
+                                    ${alert.status !== 'resolved' ? `<button onclick="resolveAlert('${alert.id}')" class="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">Resolve</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Load alerts error:', error);
+                document.getElementById('alertsTableBody').innerHTML = 
+                    `<tr><td colspan="7" class="px-3 py-4 text-center text-red-600">Error: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function acknowledgeAlert(id) {
+            try {
+                await api.put(`/api/alerts/${id}/acknowledge`);
+                await loadAlerts();
+                if (window.showSuccess) showSuccess('Alert acknowledged');
+            } catch (error) {
+                if (window.showError) showError(`Failed: ${error.message}`);
+                else alert(`Failed: ${error.message}`);
+            }
+        }
+
+        async function resolveAlert(id) {
+            try {
+                await api.put(`/api/alerts/${id}/resolve`);
+                await loadAlerts();
+                if (window.showSuccess) showSuccess('Alert resolved');
+            } catch (error) {
+                if (window.showError) showError(`Failed: ${error.message}`);
+                else alert(`Failed: ${error.message}`);
+            }
+        }
+
+        async function downloadAlertsExcel(event) {
+            const button = event?.target?.closest('button') || document.querySelector('button[onclick*="downloadAlertsExcel"]');
+            const originalHtml = button ? button.innerHTML : '';
+            
+            try {
+                // Get current filter values (same as loadAlerts)
+                const status = document.getElementById('statusFilter').value;
+                const severity = document.getElementById('severityFilter').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                const handle = document.getElementById('userFilter').value;
+                const triggerWord = document.getElementById('triggerWordFilter').value;
+                
+                // Build URL with filters
+                let url = '/api/alerts/export/excel?';
+                const params = new URLSearchParams();
+                if (status) params.append('status', status);
+                if (severity) params.append('severity', severity);
+                if (dateFrom) params.append('dateFrom', dateFrom);
+                if (dateTo) params.append('dateTo', dateTo);
+                if (handle) params.append('handle', handle);
+                if (triggerWord) params.append('triggerWord', triggerWord);
+                
+                url += params.toString();
+                
+                // Show loading state
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Downloading...';
+                }
+                
+                // Fetch and download
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to export alerts');
+                }
+                
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `alerts_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+                
+                if (window.showSuccess) showSuccess('Alerts exported to Excel successfully');
+            } catch (error) {
+                console.error('Download Excel error:', error);
+                if (window.showError) showError(`Failed to export: ${error.message}`);
+                else alert(`Failed to export: ${error.message}`);
+            } finally {
+                // Restore button
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = originalHtml;
+                }
+            }
+        }
+        
+        window.downloadAlertsExcel = downloadAlertsExcel;
+
+        async function viewConversation(alertId, sessionId, event) {
+            if (!sessionId) {
+                if (window.showError) showError('No session ID available for this alert');
+                else alert('No session ID available for this alert');
+                return;
+            }
+
+            // Get message and trigger word from button data attributes
+            // Find the button that was clicked
+            const clickedButton = event?.target?.closest('button') || 
+                                 (event?.target?.tagName === 'BUTTON' ? event.target : null) ||
+                                 document.querySelector(`button[data-alert-id="${alertId}"]`);
+            
+            const alertMessage = clickedButton?.getAttribute('data-message') || '';
+            const triggerWord = clickedButton?.getAttribute('data-trigger') || '';
+            
+            // Decode HTML entities
+            const decodeHtml = (html) => {
+                const txt = document.createElement('textarea');
+                txt.innerHTML = html;
+                return txt.value;
+            };
+            
+            const decodedMessage = decodeHtml(alertMessage);
+            const decodedTrigger = decodeHtml(triggerWord);
+
+            const modal = document.getElementById('conversationModal');
+            const content = document.getElementById('conversationContent');
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="text-center text-gray-500 py-8">Loading conversation...</div>';
+
+            try {
+                // Get all chat events from the session
+                const events = await api.get(`/api/live/sessions/${sessionId}/events?type=chat`);
+                
+                if (!events || events.length === 0) {
+                    content.innerHTML = '<div class="text-center text-gray-500 py-8">No conversation data available</div>';
+                    return;
+                }
+
+                // Sort events by timestamp (oldest first for conversation flow)
+                const sortedEvents = events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                // Find the alert message in the events
+                let alertEventIndex = -1;
+                const normalizedAlertMessage = normalizeDiacritics(decodedMessage || '');
+                
+                sortedEvents.forEach((event, index) => {
+                    const eventMessage = event.data?.comment || event.data?.text || event.data?.message || '';
+                    const normalizedEventMessage = normalizeDiacritics(eventMessage);
+                    if (normalizedEventMessage.includes(normalizedAlertMessage) || 
+                        normalizedAlertMessage.includes(normalizedEventMessage)) {
+                        alertEventIndex = index;
+                    }
+                });
+
+                // Render conversation
+                content.innerHTML = sortedEvents.map((event, index) => {
+                    const user = event.user || {};
+                    const avatar = user.profilePictureUrl || user.avatarThumb || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                    const nickname = user.nickname || user.uniqueId || 'Unknown';
+                    const uniqueId = user.uniqueId || '';
+                    const message = event.data?.comment || event.data?.text || event.data?.message || '';
+                    const timestamp = new Date(event.timestamp);
+                    const timeStr = timestamp.toLocaleTimeString();
+                    const dateStr = timestamp.toLocaleDateString();
+                    
+                    // Check if this is the alert message
+                    const isAlertMessage = index === alertEventIndex;
+                    const messageClass = isAlertMessage ? 'bg-yellow-100 border-yellow-400 border-2' : 'bg-gray-50 border-gray-200';
+                    const messageId = isAlertMessage ? 'alert-message' : '';
+                    
+                    // Highlight trigger word in message
+                    const highlightedMessage = highlightTextInAlert(message, decodedTrigger);
+                    const highlightedNickname = highlightTextInAlert(nickname, decodedTrigger);
+                    const highlightedUniqueId = uniqueId ? highlightTextInAlert(uniqueId, decodedTrigger) : '';
+                    
+                    return `
+                        <div id="${messageId}" class="border rounded-lg p-3 ${messageClass} transition-all">
+                            <div class="flex items-start gap-3">
+                                <img src="${avatar}" 
+                                     alt="${escapeHtml(nickname)}" 
+                                     class="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+'">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-semibold text-gray-900">${highlightedNickname}</span>
+                                        ${uniqueId ? `<span class="text-sm text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                        <span class="text-xs text-gray-400 ml-auto">${dateStr} ${timeStr}</span>
+                                        ${isAlertMessage ? `<span class="px-2 py-0.5 text-xs font-medium bg-yellow-500 text-white rounded">ALERT</span>` : ''}
+                                    </div>
+                                    <p class="text-gray-800 break-words">${highlightedMessage}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Scroll to alert message after a short delay to ensure DOM is rendered
+                setTimeout(() => {
+                    const alertElement = document.getElementById('alert-message');
+                    if (alertElement) {
+                        alertElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Add a pulse animation
+                        alertElement.classList.add('animate-pulse');
+                        setTimeout(() => {
+                            alertElement.classList.remove('animate-pulse');
+                        }, 2000);
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+                content.innerHTML = `<div class="text-center text-red-600 py-8">Error loading conversation: ${error.message}</div>`;
+            }
+        }
+
+        function closeConversationModal() {
+            document.getElementById('conversationModal').classList.add('hidden');
+        }
+
+        // Normalize diacritics for search (same as session-view)
+        function normalizeDiacritics(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        // Highlight trigger word in text (diacritic-insensitive)
+        function highlightTextInAlert(text, triggerWord) {
+            if (!triggerWord || !triggerWord.trim() || !text) {
+                return escapeHtml(text);
+            }
+            
+            const term = triggerWord.trim().replace('@', '');
+            if (!term) {
+                return escapeHtml(text);
+            }
+            
+            // Escape HTML first
+            const escapedText = escapeHtml(text);
+            
+            // Normalize both text and trigger word for diacritic-insensitive matching
+            const normalizedText = normalizeDiacritics(text);
+            const normalizedTerm = normalizeDiacritics(term);
+            
+            // Find all matches
+            const matches = [];
+            let index = normalizedText.indexOf(normalizedTerm);
+            while (index !== -1) {
+                matches.push({
+                    start: index,
+                    end: index + normalizedTerm.length
+                });
+                index = normalizedText.indexOf(normalizedTerm, index + 1);
+            }
+            
+            // If no matches found, return escaped text
+            if (matches.length === 0) {
+                return escapedText;
+            }
+            
+            // Build highlighted text
+            let result = '';
+            let lastIndex = 0;
+            
+            matches.forEach(match => {
+                result += escapedText.substring(lastIndex, match.start);
+                const matchText = escapedText.substring(match.start, match.end);
+                result += `<mark class="bg-yellow-300 text-gray-900 px-0.5 rounded font-semibold">${matchText}</mark>`;
+                lastIndex = match.end;
+            });
+            
+            result += escapedText.substring(lastIndex);
+            return result;
+        }
+
+        window.acknowledgeAlert = acknowledgeAlert;
+        window.resolveAlert = resolveAlert;
+        window.viewConversation = viewConversation;
+        window.closeConversationModal = closeConversationModal;
+        window.downloadAlertsExcel = downloadAlertsExcel;
+
+        // Add event listener for download Excel button
+        document.getElementById('downloadExcelBtn')?.addEventListener('click', downloadAlertsExcel);
+
+        // Socket.IO for real-time updates
+        let socket = null;
+        if (typeof io !== 'undefined') {
+            socket = io();
+            socket.on('newAlert', () => loadAlerts());
+            socket.on('alertAcknowledged', () => loadAlerts());
+            socket.on('alertResolved', () => loadAlerts());
+        }
+
+        // Initialize
+        loadFilterOptions();
+        loadAlerts();
+    </script>
+<%- include('partials/footer') %>

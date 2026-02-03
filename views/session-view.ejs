@@ -1,0 +1,1695 @@
+<%- include('partials/head', { includeSocketIO: true }) %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: 'session-view' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900" id="sessionHeader">Session View</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide" id="sessionSubheader">Loading session...</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="sessionStatus" class="px-3 py-1 text-xs font-semibold rounded-full"></span>
+                        <button onclick="exportSessionToExcel()" id="exportExcelBtn" class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Export Excel
+                        </button>
+                        <button onclick="window.history.back()" class="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700">
+                            Back
+                        </button>
+                    </div>
+                </div>
+                <!-- Search Bar -->
+                <div class="relative">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative">
+                            <input 
+                                type="text" 
+                                id="userSearchInput" 
+                                placeholder="Search by user handle (with or without @) or text..." 
+                                class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                autocomplete="off"
+                            >
+                            <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <!-- Autocomplete dropdown -->
+                            <div id="autocompleteDropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        <button onclick="clearSearch()" id="clearSearchBtn" class="px-3 py-2 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors hidden">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Top Bar: Status Indicator -->
+                <div id="statusBar" class="bg-white border border-gray-200 rounded-lg p-3">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+
+                <!-- Main Content: Chart and Stats -->
+                <div class="grid grid-cols-1 lg:grid-cols-10 gap-3">
+                    <!-- Activity Graph (70%) -->
+                    <div class="lg:col-span-7 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide">Activity Graph</h3>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-blue-600"></span>
+                                    <span>Viewers</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-green-600"></span>
+                                    <span>Likes</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-indigo-600"></span>
+                                    <span>Comments</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-purple-600"></span>
+                                    <span>Gifts</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-orange-600"></span>
+                                    <span>Shares</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-3 h-0.5 bg-yellow-600"></span>
+                                    <span>Followers</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div id="activityChart" class="h-64">
+                            <div class="flex items-center justify-center h-full text-gray-500">
+                                Loading chart data...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Stats Panel (30%) -->
+                    <div class="lg:col-span-3 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3" id="liveStatsTitle">Live Stats</h3>
+                        <div id="liveStats" class="space-y-3">
+                            <div class="border border-gray-200 rounded p-3 bg-gray-50">
+                                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Current Viewers</p>
+                                <p class="metric-value text-2xl font-bold text-blue-600" id="currentViewers">-</p>
+                            </div>
+                            <div class="border border-gray-200 rounded p-3 bg-gray-50">
+                                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Gifts</p>
+                                <p class="metric-value text-xl font-bold text-purple-600" id="totalGifts">-</p>
+                            </div>
+                            <div class="border border-gray-200 rounded p-3 bg-gray-50">
+                                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Likes</p>
+                                <p class="metric-value text-xl font-bold text-green-600" id="totalLikes">-</p>
+                            </div>
+                            <div class="border border-gray-200 rounded p-3 bg-gray-50">
+                                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Commenters</p>
+                                <p class="metric-value text-xl font-bold text-indigo-600" id="activeCommenters">-</p>
+                                <p class="text-xs text-gray-500 mt-1">Last 90 seconds</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Panels (7 panels - Row 1: Chats 40%, Likes 20%, Gifts 20%, Views 20% | Row 2: Joins 33%, Shares 33%, Followers 33%) -->
+                <div class="space-y-3">
+                    <!-- Row 1: Chats, Likes, Gifts, Views -->
+                    <div class="grid grid-cols-1 md:grid-cols-10 gap-3">
+                        <!-- Chats Panel (50%) -->
+                        <div class="md:col-span-5 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>💬</span>
+                            <span>Chats</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="chatsCount">0</span>
+                        </h4>
+                        <div id="chatsPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No chat messages</p>
+                        </div>
+                    </div>
+
+                        <!-- Likes Panel (20%) -->
+                        <div class="md:col-span-2 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>❤️</span>
+                            <span>Likes</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="likesCount">0</span>
+                        </h4>
+                        <div id="likesPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No likes</p>
+                        </div>
+                    </div>
+
+                        <!-- Gifts Panel (20%) -->
+                        <div class="md:col-span-2 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>🎁</span>
+                            <span>Gifts</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="giftsCount">0</span>
+                        </h4>
+                        <div id="giftsPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No gifts</p>
+                        </div>
+                    </div>
+
+                        <!-- Views Panel (10% - narrower, rightmost) -->
+                        <div class="md:col-span-1 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>👁️</span>
+                            <span>Views</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="viewsCount">0</span>
+                        </h4>
+                        <div id="viewsPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No view updates</p>
+                        </div>
+                    </div>
+                    </div>
+
+                    <!-- Row 2: User Joins, Shares, New Followers -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <!-- User Joins Panel (33%) -->
+                        <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>🚪</span>
+                            <span>User Joins</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="joinsCount">0</span>
+                        </h4>
+                        <div id="joinsPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No user joins</p>
+                        </div>
+                    </div>
+
+                        <!-- Shares Panel (33%) -->
+                        <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>📤</span>
+                            <span>Shares</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="sharesCount">0</span>
+                        </h4>
+                        <div id="sharesPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No shares</p>
+                        </div>
+                    </div>
+
+                        <!-- New Followers Panel (33%) -->
+                        <div class="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <span>👥</span>
+                            <span>New Followers</span>
+                            <span class="ml-auto text-xs text-gray-500 font-normal" id="followersCount">0</span>
+                        </h4>
+                        <div id="followersPanel" class="space-y-2 max-h-64 overflow-y-auto">
+                            <p class="text-xs text-gray-500 text-center py-4">No new followers</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onclick="closeImageModal()">
+        <div class="relative max-w-4xl max-h-full" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <img id="modalImage" src="" alt="Profile" class="max-w-full max-h-[80vh] rounded-lg object-contain mx-auto">
+        </div>
+    </div>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        let currentSessionId = null;
+        let currentSession = null;
+        let isLive = false;
+        let socket = null;
+        let refreshInterval = null;
+        let chartData = null;
+        let allChatEvents = []; // Store all chat events for calculating total unique commenters
+        
+        // Track events in memory for live sessions (to avoid re-rendering entire panels)
+        let liveEventsCache = {
+            chats: [],
+            likes: [],
+            gifts: [],
+            views: [],
+            joins: [],
+            shares: [],
+            followers: []
+        };
+        let cacheInitialized = false;
+
+        // Initialize - wait for DOM to be ready
+        (async function() {
+            // Wait for DOM to be fully loaded
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => {
+                    document.addEventListener('DOMContentLoaded', resolve);
+                });
+            }
+            
+            // Additional small delay to ensure all elements are rendered
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Get session ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            currentSessionId = urlParams.get('sessionId');
+            
+            if (!currentSessionId) {
+                document.getElementById('sessionHeader').textContent = 'Session Not Found';
+                return;
+            }
+
+            console.log(`[Session View] Initializing for session ${currentSessionId}`);
+            
+            // Verify DOM elements exist before loading
+            const chatsPanel = document.getElementById('chatsPanel');
+            if (!chatsPanel) {
+                console.error('[Session View] ❌ chatsPanel not found in DOM! Waiting...');
+                // Wait a bit more and retry
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // Setup Socket.IO for real-time updates
+            // Load session data FIRST (before setting up Socket.IO to ensure cache is initialized)
+            await loadSession();
+            
+            // Initialize Socket.IO AFTER loading data (so cache is ready for Socket.IO events)
+            if (typeof io !== 'undefined') {
+                socket = io();
+                setupSocketListeners();
+            }
+        })();
+
+        async function loadSession() {
+            try {
+                console.log(`[Session View] Loading session ${currentSessionId}`);
+                currentSession = await api.get(`/api/live/sessions/${currentSessionId}`);
+                isLive = currentSession.status === 'live';
+                console.log(`[Session View] Session loaded - status: ${currentSession.status}, isLive: ${isLive}`);
+                
+                // Update header
+                document.getElementById('sessionHeader').textContent = `@${currentSession.handle}`;
+                document.getElementById('sessionSubheader').textContent = currentSession.account?.nickname || currentSession.handle;
+                
+                // Update status
+                const statusEl = document.getElementById('sessionStatus');
+                if (isLive) {
+                    statusEl.className = 'px-3 py-1 text-xs font-semibold bg-red-600 text-white rounded-full flex items-center gap-1';
+                    statusEl.innerHTML = '<span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> LIVE';
+                } else {
+                    statusEl.className = 'px-3 py-1 text-xs font-semibold bg-gray-600 text-white rounded-full';
+                    statusEl.textContent = 'ENDED';
+                }
+
+                // Update status bar
+                updateStatusBar();
+                
+                // Reset cache when loading new session
+                cacheInitialized = false;
+                liveEventsCache = {
+                    chats: [],
+                    likes: [],
+                    gifts: [],
+                    views: [],
+                    joins: [],
+                    shares: [],
+                    followers: []
+                };
+                
+                // Load chart data
+                await loadChartData();
+                
+                // Load stats
+                updateLiveStats();
+                
+                // Load events
+                await loadEvents();
+                
+                // Start auto-refresh if live
+                if (isLive) {
+                    startAutoRefresh();
+                }
+            } catch (error) {
+                console.error('Error loading session:', error);
+                if (window.showError) showError(`Failed to load session: ${error.message}`);
+            }
+        }
+
+        function updateStatusBar() {
+            const statusBar = document.getElementById('statusBar');
+            const startTime = new Date(currentSession.startTime);
+            const endTime = currentSession.endTime ? new Date(currentSession.endTime) : null;
+            const now = new Date();
+            const duration = endTime ? Math.floor((endTime - startTime) / 1000) : Math.floor((now - startTime) / 1000);
+            
+            const hours = Math.floor(duration / 3600);
+            const minutes = Math.floor((duration % 3600) / 60);
+            const seconds = duration % 60;
+            const durationText = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+            
+            statusBar.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                        <p class="text-sm font-semibold ${isLive ? 'text-red-600' : 'text-gray-600'}">${isLive ? 'LIVE' : 'ENDED'}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Started</p>
+                        <p class="metric-value text-sm font-medium text-gray-900">${formatDateTime(startTime)}</p>
+                    </div>
+                    ${endTime ? `
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Ended</p>
+                            <p class="metric-value text-sm font-medium text-gray-900">${formatDateTime(endTime)}</p>
+                        </div>
+                    ` : ''}
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Duration</p>
+                        <p class="metric-value text-sm font-medium text-gray-900">${durationText}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadChartData() {
+            try {
+                chartData = await api.get(`/api/live/sessions/${currentSessionId}/chart-data?interval=segment`);
+                renderChart();
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                document.getElementById('activityChart').innerHTML = `
+                    <div class="flex items-center justify-center h-full text-red-500">
+                        Error loading chart: ${escapeHtml(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function renderChart() {
+            if (!chartData || !chartData.labels || chartData.labels.length === 0) {
+                document.getElementById('activityChart').innerHTML = `
+                    <div class="flex items-center justify-center h-full text-gray-500">
+                        No chart data available
+                    </div>
+                `;
+                return;
+            }
+
+            const chartEl = document.getElementById('activityChart');
+            const width = 800;
+            const height = 256;
+            const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+
+            const maxNormalized = 100;
+            const numPoints = chartData.labels.length;
+
+            // Create SVG
+            const svg = `
+                <svg class="w-full" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                    <!-- Grid lines -->
+                    ${Array.from({ length: 5 }, (_, i) => {
+                        const y = padding.top + (i * chartHeight / 4);
+                        return `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="#E5E7EB" stroke-width="1" class="grid-line"/>`;
+                    }).join('')}
+                    
+                    <!-- Data lines -->
+                    <g transform="translate(${padding.left}, ${padding.top})">
+                        <!-- Viewers line -->
+                        <polyline 
+                            points="${chartData.data.viewers.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#2563EB" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                        <!-- Likes line -->
+                        <polyline 
+                            points="${chartData.data.likes.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#059669" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                        <!-- Comments line -->
+                        <polyline 
+                            points="${chartData.data.comments.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#4F46E5" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                        <!-- Gifts line -->
+                        <polyline 
+                            points="${chartData.data.gifts.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#9333EA" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                        <!-- Shares line -->
+                        <polyline 
+                            points="${chartData.data.shares.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#EA580C" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                        <!-- Followers line -->
+                        <polyline 
+                            points="${chartData.data.followers.map((d, i) => `${(i / (numPoints - 1 || 1)) * chartWidth},${chartHeight - (d.normalized / maxNormalized) * chartHeight}`).join(' ')}"
+                            fill="none" 
+                            stroke="#CA8A04" 
+                            stroke-width="2"
+                            class="chart-line"
+                        />
+                    </g>
+                    
+                    <!-- Y-axis labels -->
+                    ${Array.from({ length: 5 }, (_, i) => {
+                        const y = padding.top + (i * chartHeight / 4);
+                        const value = Math.round((maxNormalized - (i * maxNormalized / 4)) / 100 * Math.max(...Object.values(chartData.maxValues)));
+                        return `<text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" class="text-xs fill-gray-600 metric-value">${value.toLocaleString()}</text>`;
+                    }).join('')}
+                </svg>
+            `;
+
+            chartEl.innerHTML = svg;
+        }
+
+        function updateLiveStats() {
+            const stats = currentSession.stats || {};
+            
+            document.getElementById('currentViewers').textContent = (stats.totalViewers || 0).toLocaleString();
+            document.getElementById('totalGifts').textContent = (stats.totalGifts || 0).toLocaleString();
+            document.getElementById('totalLikes').textContent = (stats.totalLikes || 0).toLocaleString();
+            
+            // Update title if ended
+            if (!isLive) {
+                document.getElementById('liveStatsTitle').textContent = 'Final Stats';
+            }
+        }
+
+        // Store all events for search functionality
+        let allEvents = [];
+        let searchFilter = '';
+        let uniqueUsers = new Set();
+
+        async function loadEvents() {
+            try {
+                console.log(`[Session View] Loading events for session ${currentSessionId}, isLive: ${isLive}, cacheInitialized: ${cacheInitialized}`);
+                // Load ALL events without limit
+                const events = await api.get(`/api/live/sessions/${currentSessionId}/events`);
+                console.log(`[Session View] Received ${events?.length || 0} events from API`);
+                
+                // Store all events for search
+                allEvents = events;
+                
+                // Extract unique users for autocomplete
+                uniqueUsers.clear();
+                events.forEach(event => {
+                    if (event.user) {
+                        const handle = event.user.uniqueId || event.user.username || event.user.nickname;
+                        if (handle) {
+                            uniqueUsers.add(handle.toLowerCase());
+                        }
+                    }
+                });
+                
+                if (!Array.isArray(events)) {
+                    console.error('[Session View] ❌ Events is not an array:', events);
+                    return;
+                }
+                
+                // Apply search filter if active
+                let filteredEvents = events;
+                if (searchFilter) {
+                    filteredEvents = filterEventsBySearch(events, searchFilter);
+                }
+                
+                // For LIVE sessions: populate cache from API, then Socket.IO will update cache in real-time
+                // For ENDED sessions: use API events directly (static)
+                if (isLive) {
+                    console.log(`[Session View] Processing as LIVE session`);
+                    // Initialize cache from API on first load or refresh
+                    if (!cacheInitialized) {
+                        // Populate cache from API (reverse order for display - show oldest first in panels)
+                        // Use ALL events, not limited
+                        liveEventsCache.chats = filteredEvents.filter(e => e && e.type === 'chat').reverse();
+                        liveEventsCache.likes = filteredEvents.filter(e => e && e.type === 'like').reverse();
+                        liveEventsCache.gifts = filteredEvents.filter(e => e && e.type === 'gift').reverse();
+                        liveEventsCache.views = filteredEvents.filter(e => e && e.type === 'roomUser').reverse();
+                        liveEventsCache.joins = filteredEvents.filter(e => {
+                            if (!e || e.type !== 'member') return false;
+                            const actionType = (e.data?.actionType || '').toLowerCase();
+                            return actionType !== 'leave' && actionType !== 'left';
+                        }).reverse();
+                        liveEventsCache.shares = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('share') || e.data?.socialAction === 'share' || e.data?.actionType === 'share')).reverse();
+                        liveEventsCache.followers = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('follow') || e.data?.socialAction === 'follow' || e.data?.actionType === 'follow')).reverse();
+                        
+                        cacheInitialized = true;
+                    } else {
+                        // Update cache with filtered events
+                        liveEventsCache.chats = filteredEvents.filter(e => e && e.type === 'chat').reverse();
+                        liveEventsCache.likes = filteredEvents.filter(e => e && e.type === 'like').reverse();
+                        liveEventsCache.gifts = filteredEvents.filter(e => e && e.type === 'gift').reverse();
+                        liveEventsCache.views = filteredEvents.filter(e => e && e.type === 'roomUser').reverse();
+                        liveEventsCache.joins = filteredEvents.filter(e => {
+                            if (!e || e.type !== 'member') return false;
+                            const actionType = (e.data?.actionType || '').toLowerCase();
+                            return actionType !== 'leave' && actionType !== 'left';
+                        }).reverse();
+                        liveEventsCache.shares = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('share') || e.data?.socialAction === 'share' || e.data?.actionType === 'share')).reverse();
+                        liveEventsCache.followers = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('follow') || e.data?.socialAction === 'follow' || e.data?.actionType === 'follow')).reverse();
+                    }
+                    
+                    // Render from cache (Socket.IO updates cache in real-time)
+                    try {
+                        renderChatsPanel(liveEventsCache.chats);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering chats panel:', e); }
+                    
+                    try {
+                        renderLikesPanel(liveEventsCache.likes);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering likes panel:', e); }
+                    
+                    try {
+                        renderGiftsPanel(liveEventsCache.gifts);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering gifts panel:', e); }
+                    
+                    try {
+                        renderViewsPanel(liveEventsCache.views);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering views panel:', e); }
+                    
+                    try {
+                        renderJoinsPanel(liveEventsCache.joins);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering joins panel:', e); }
+                    
+                    try {
+                        renderSharesPanel(liveEventsCache.shares);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering shares panel:', e); }
+                    
+                    try {
+                        renderFollowersPanel(liveEventsCache.followers);
+                    } catch (e) { console.error('[Session View] ❌ Error rendering followers panel:', e); }
+                    
+                    // Update counts from cache
+                    document.getElementById('chatsCount').textContent = liveEventsCache.chats.length;
+                    document.getElementById('likesCount').textContent = liveEventsCache.likes.length;
+                    document.getElementById('giftsCount').textContent = liveEventsCache.gifts.length;
+                    document.getElementById('viewsCount').textContent = liveEventsCache.views.length;
+                    document.getElementById('joinsCount').textContent = liveEventsCache.joins.length;
+                    document.getElementById('sharesCount').textContent = liveEventsCache.shares.length;
+                    document.getElementById('followersCount').textContent = liveEventsCache.followers.length;
+                } else {
+                    // ENDED session: use API events directly (static)
+                    console.log(`[Session View] Processing as ENDED session with ${events.length} total events`);
+                    console.log(`[Session View] First 3 events sample:`, events.slice(0, 3).map(e => ({ type: e?.type, hasUser: !!e?.user, hasData: !!e?.data })));
+                    
+                    // Apply search filter if active
+                    const filteredEvents = searchFilter ? filterEventsBySearch(events, searchFilter) : events;
+                    
+                    // Separate events by type (reverse order for display - show oldest first in panels)
+                    // Load ALL events, no limit
+                    const chats = filteredEvents.filter(e => e && e.type === 'chat').reverse();
+                    const likes = filteredEvents.filter(e => e && e.type === 'like').reverse();
+                    const gifts = filteredEvents.filter(e => e && e.type === 'gift').reverse();
+                    const views = filteredEvents.filter(e => e && e.type === 'roomUser').reverse();
+                    const joins = filteredEvents.filter(e => {
+                        if (!e || e.type !== 'member') return false;
+                        const actionType = (e.data?.actionType || '').toLowerCase();
+                        return actionType !== 'leave' && actionType !== 'left';
+                    }).reverse();
+                    const shares = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('share') || e.data?.socialAction === 'share' || e.data?.actionType === 'share')).reverse();
+                    const followers = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('follow') || e.data?.socialAction === 'follow' || e.data?.actionType === 'follow')).reverse();
+                    
+                    console.log(`[Session View] Filtered events - Chats: ${chats.length}, Likes: ${likes.length}, Gifts: ${gifts.length}, Views: ${views.length}, Joins: ${joins.length}, Shares: ${shares.length}, Followers: ${followers.length}`);
+                    
+                    // Verify DOM elements exist
+                    const chatsPanel = document.getElementById('chatsPanel');
+                    const likesPanel = document.getElementById('likesPanel');
+                    const giftsPanel = document.getElementById('giftsPanel');
+                    console.log(`[Session View] DOM check - chatsPanel: ${!!chatsPanel}, likesPanel: ${!!likesPanel}, giftsPanel: ${!!giftsPanel}`);
+                    
+                    if (!chatsPanel || !likesPanel || !giftsPanel) {
+                        console.error('[Session View] ❌ Panel elements not found in DOM!');
+                        return;
+                    }
+                    
+                    // Update counts
+                    const chatsCountEl = document.getElementById('chatsCount');
+                    const likesCountEl = document.getElementById('likesCount');
+                    const giftsCountEl = document.getElementById('giftsCount');
+                    const viewsCountEl = document.getElementById('viewsCount');
+                    const joinsCountEl = document.getElementById('joinsCount');
+                    const sharesCountEl = document.getElementById('sharesCount');
+                    const followersCountEl = document.getElementById('followersCount');
+                    
+                    if (chatsCountEl) chatsCountEl.textContent = chats.length;
+                    if (likesCountEl) likesCountEl.textContent = likes.length;
+                    if (giftsCountEl) giftsCountEl.textContent = gifts.length;
+                    if (viewsCountEl) viewsCountEl.textContent = views.length;
+                    if (joinsCountEl) joinsCountEl.textContent = joins.length;
+                    if (sharesCountEl) sharesCountEl.textContent = shares.length;
+                    if (followersCountEl) followersCountEl.textContent = followers.length;
+                    
+                    // Render panels
+                    try {
+                        renderChatsPanel(chats);
+                        console.log(`[Session View] ✓ Rendered chats panel with ${chats.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering chats panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderLikesPanel(likes);
+                        console.log(`[Session View] ✓ Rendered likes panel with ${likes.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering likes panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderGiftsPanel(gifts);
+                        console.log(`[Session View] ✓ Rendered gifts panel with ${gifts.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering gifts panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderViewsPanel(views);
+                        console.log(`[Session View] ✓ Rendered views panel with ${views.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering views panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderJoinsPanel(joins);
+                        console.log(`[Session View] ✓ Rendered joins panel with ${joins.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering joins panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderSharesPanel(shares);
+                        console.log(`[Session View] ✓ Rendered shares panel with ${shares.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering shares panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                    
+                    try {
+                        renderFollowersPanel(followers);
+                        console.log(`[Session View] ✓ Rendered followers panel with ${followers.length} items`);
+                    } catch (e) { 
+                        console.error('[Session View] ❌ Error rendering followers panel:', e);
+                        console.error('[Session View] Error stack:', e.stack);
+                    }
+                }
+                
+                // Reset chat events collection and calculate active commenters
+                allChatEvents = (searchFilter ? filterEventsBySearch(events, searchFilter) : events).filter(e => e.type === 'chat');
+                calculateActiveCommenters([]); // Pass empty array since we already set allChatEvents
+            } catch (error) {
+                console.error('[Session View] Error loading events:', error);
+                if (window.showError) showError(`Failed to load events: ${error.message}`);
+            }
+        }
+        
+        function calculateActiveCommenters(events) {
+            // Add new events to the collection
+            if (events && events.length > 0) {
+                const chatEvents = events.filter(e => e.type === 'chat');
+                allChatEvents.push(...chatEvents);
+            }
+            
+            if (isLive) {
+                // LIVE: Calculate unique users who commented in last 90 seconds
+                const now = new Date();
+                const ninetySecondsAgo = new Date(now.getTime() - 90 * 1000);
+                
+                const recentChats = allChatEvents.filter(e => {
+                    const eventTime = new Date(e.timestamp);
+                    return eventTime >= ninetySecondsAgo;
+                });
+                
+                const uniqueUsers = new Set(recentChats.map(e => e.user?.uniqueId || e.user?.nickname || 'unknown'));
+                document.getElementById('activeCommenters').textContent = uniqueUsers.size;
+                
+                // Update label
+                const labelElement = document.querySelector('#activeCommenters').parentElement.querySelector('.text-xs.mt-1');
+                if (labelElement) {
+                    labelElement.textContent = 'Last 90 seconds';
+                }
+            } else {
+                // ENDED: Calculate total unique commenters
+                const uniqueUsers = new Set(allChatEvents.map(e => e.user?.uniqueId || e.user?.nickname || 'unknown'));
+                document.getElementById('activeCommenters').textContent = uniqueUsers.size;
+                
+                // Update label
+                const labelElement = document.querySelector('#activeCommenters').parentElement.querySelector('.text-xs.mt-1');
+                if (labelElement) {
+                    labelElement.textContent = 'Total commenters';
+                }
+            }
+        }
+
+        // Helper function to check if panel is scrolled to bottom
+        function isScrolledToBottom(panel) {
+            return panel.scrollHeight - panel.scrollTop <= panel.clientHeight + 5; // 5px threshold
+        }
+
+        // Helper function to auto-scroll panel to bottom
+        function autoScrollToBottom(panel) {
+            requestAnimationFrame(() => {
+                panel.scrollTop = panel.scrollHeight;
+            });
+        }
+
+        function renderChatsPanel(chats) {
+            const panel = document.getElementById('chatsPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ chatsPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(chats)) {
+                console.error('[Session View] ❌ chats is not an array:', chats);
+                return;
+            }
+            if (chats.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No chat messages</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = chats.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || user.avatarMedium || user.avatarLarger || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const uniqueId = user.uniqueId || '';
+                const message = event.data?.comment || event.message || '';
+                const time = formatTime(new Date(event.timestamp));
+                const highlightedMessage = highlightText(message, searchFilter);
+                const highlightedNickname = highlightText(nickname, searchFilter);
+                const highlightedUniqueId = uniqueId ? highlightText(uniqueId, searchFilter) : '';
+                
+                return `
+                    <div class="flex items-start gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-medium text-gray-900">${highlightedNickname}</span>
+                                ${uniqueId ? `<span class="text-xs text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                <span class="ml-auto metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                            <p class="text-xs text-gray-700">${highlightedMessage}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderLikesPanel(likes) {
+            const panel = document.getElementById('likesPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ likesPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(likes)) {
+                console.error('[Session View] ❌ likes is not an array:', likes);
+                return;
+            }
+            if (likes.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No likes</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = likes.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const uniqueId = user.uniqueId || '';
+                const count = event.data?.likeCount || 1;
+                const time = formatTime(new Date(event.timestamp));
+                const highlightedNickname = highlightText(nickname, searchFilter);
+                const highlightedUniqueId = uniqueId ? highlightText(uniqueId, searchFilter) : '';
+                
+                return `
+                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-900">${highlightedNickname}</span>
+                                ${uniqueId ? `<span class="text-xs text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                <span class="text-xs text-green-600 font-medium">+${count}</span>
+                                <span class="ml-auto metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderGiftsPanel(gifts) {
+            const panel = document.getElementById('giftsPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ giftsPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(gifts)) {
+                console.error('[Session View] ❌ gifts is not an array:', gifts);
+                return;
+            }
+            if (gifts.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No gifts</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = gifts.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const uniqueId = user.uniqueId || '';
+                const giftName = event.data?.giftName || event.data?.gift?.name || 'Gift';
+                const giftCount = event.data?.repeatCount || event.data?.giftCount || 1;
+                const time = formatTime(new Date(event.timestamp));
+                const highlightedNickname = highlightText(nickname, searchFilter);
+                const highlightedUniqueId = uniqueId ? highlightText(uniqueId, searchFilter) : '';
+                const highlightedGiftName = highlightText(giftName, searchFilter);
+                
+                return `
+                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-900">${highlightedNickname}</span>
+                                ${uniqueId ? `<span class="text-xs text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                <span class="text-xs text-purple-600 font-medium">${highlightedGiftName} x${giftCount}</span>
+                                <span class="ml-auto metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderViewsPanel(views) {
+            const panel = document.getElementById('viewsPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ viewsPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(views)) {
+                console.error('[Session View] ❌ views is not an array:', views);
+                return;
+            }
+            if (views.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No view updates</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = views.map(event => {
+                const viewerCount = event.data?.totalUserCount || event.data?.viewerCount || 0;
+                const time = formatTime(new Date(event.timestamp));
+                
+                return `
+                    <div class="flex items-center justify-between p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <div>
+                            <span class="text-xs font-medium text-gray-900">${viewerCount.toLocaleString()} viewers</span>
+                        </div>
+                        <span class="metric-value text-xs text-gray-500">${time}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderJoinsPanel(joins) {
+            const panel = document.getElementById('joinsPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ joinsPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(joins)) {
+                console.error('[Session View] ❌ joins is not an array:', joins);
+                return;
+            }
+            if (joins.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No user joins</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = joins.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || user.avatarMedium || user.avatarLarger || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const uniqueId = user.uniqueId || '';
+                const time = formatTime(new Date(event.timestamp));
+                const highlightedNickname = highlightText(nickname, searchFilter);
+                const highlightedUniqueId = uniqueId ? highlightText(uniqueId, searchFilter) : '';
+                
+                return `
+                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-900">${highlightedNickname}</span>
+                                ${uniqueId ? `<span class="text-xs text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                <span class="text-xs text-blue-600 font-medium ml-auto">joined</span>
+                                <span class="metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderSharesPanel(shares) {
+            const panel = document.getElementById('sharesPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ sharesPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(shares)) {
+                console.error('[Session View] ❌ shares is not an array:', shares);
+                return;
+            }
+            if (shares.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No shares</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = shares.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const time = formatTime(new Date(event.timestamp));
+                
+                return `
+                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-900">${highlightText(nickname, searchFilter)}</span>
+                                <span class="text-xs text-orange-600 font-medium">shared</span>
+                                <span class="ml-auto metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function renderFollowersPanel(followers) {
+            const panel = document.getElementById('followersPanel');
+            if (!panel) {
+                console.error('[Session View] ❌ followersPanel element not found!');
+                return;
+            }
+            if (!Array.isArray(followers)) {
+                console.error('[Session View] ❌ followers is not an array:', followers);
+                return;
+            }
+            if (followers.length === 0) {
+                panel.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No new followers</p>';
+                autoScrollToBottom(panel);
+                return;
+            }
+            
+            const wasScrolledToBottom = isScrolledToBottom(panel);
+            panel.innerHTML = followers.map(event => {
+                const user = event.user || {};
+                const avatar = user.profilePictureUrl || user.avatarThumb || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';
+                const nickname = user.nickname || user.uniqueId || 'Unknown';
+                const uniqueId = user.uniqueId || '';
+                const time = formatTime(new Date(event.timestamp));
+                const highlightedNickname = highlightText(nickname, searchFilter);
+                const highlightedUniqueId = uniqueId ? highlightText(uniqueId, searchFilter) : '';
+                
+                return `
+                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50">
+                        <img src="${avatar}" 
+                             alt="${escapeHtml(nickname)}" 
+                             class="w-8 h-8 rounded-full object-cover cursor-pointer flex-shrink-0"
+                             onclick="showImageModal('${avatar}', '${escapeHtml(nickname)}')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTE2IDEyQzE0LjM0IDEyIDEzIDEzLjM0IDEzIDE1QzEzIDE2LjY2IDE0LjM0IDE4IDE2IDE4QzE3LjY2IDE4IDE5IDE2LjY2IDE5IDE1QzE5IDEzLjM0IDE3LjY2IDEyIDE2IDEyWk0xNiAyMEMxMy43OSAyMCAxMiAyMS43OSAxMiAyNFYyNkgyMFYyNEMyMCAyMS43OSAxOC4yMSAyMCAxNiAyMFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+';">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-900">${highlightedNickname}</span>
+                                ${uniqueId ? `<span class="text-xs text-gray-500">@${highlightedUniqueId}</span>` : ''}
+                                <span class="text-xs text-yellow-600 font-medium">followed</span>
+                                <span class="ml-auto metric-value text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (wasScrolledToBottom) {
+                autoScrollToBottom(panel);
+            }
+        }
+
+        function setupSocketListeners() {
+            if (!socket) return;
+            
+            socket.on('liveEvent', (data) => {
+                if (data.sessionId === currentSessionId) {
+                    // Add event to appropriate panel
+                    addEventToPanel(data.event);
+                    
+                    // Update stats if needed
+                    if (data.stats) {
+                        currentSession.stats = data.stats;
+                        updateLiveStats();
+                        calculateActiveCommenters([data.event]);
+                    }
+                }
+            });
+            
+            socket.on('liveStatsUpdate', (data) => {
+                if (data.sessionId === currentSessionId) {
+                    currentSession.stats = data.stats;
+                    updateLiveStats();
+                }
+            });
+        }
+
+        function addEventToPanel(event) {
+            if (!event || !event.type) return;
+            
+            // Only process Socket.IO events for LIVE sessions
+            if (!isLive) {
+                return; // For ended sessions, rely on API polling only
+            }
+            
+            // Ensure cache is initialized
+            if (!cacheInitialized) {
+                // If cache not initialized, initialize it first by loading from API
+                loadEvents().then(() => {
+                    cacheInitialized = true;
+                    // Then add this event
+                    addEventToPanel(event);
+                });
+                return;
+            }
+            
+            // Add to cache and re-render affected panel
+            let added = false;
+            switch (event.type) {
+                case 'chat':
+                    liveEventsCache.chats.push(event);
+                    // Keep all chats, no limit (but limit to 10000 for performance)
+                    if (liveEventsCache.chats.length > 10000) {
+                        liveEventsCache.chats = liveEventsCache.chats.slice(-10000);
+                    }
+                    added = true;
+                    // Apply search filter if active
+                    const filteredChats = searchFilter ? filterEventsBySearch(liveEventsCache.chats, searchFilter) : liveEventsCache.chats;
+                    renderChatsPanel(filteredChats.filter(e => e.type === 'chat'));
+                    document.getElementById('chatsCount').textContent = filteredChats.filter(e => e.type === 'chat').length;
+                    break;
+                case 'like':
+                    liveEventsCache.likes.push(event);
+                    // Keep all likes, no limit (but limit to 5000 for performance)
+                    if (liveEventsCache.likes.length > 5000) {
+                        liveEventsCache.likes = liveEventsCache.likes.slice(-5000);
+                    }
+                    added = true;
+                    const filteredLikes = searchFilter ? filterEventsBySearch(liveEventsCache.likes, searchFilter) : liveEventsCache.likes;
+                    renderLikesPanel(filteredLikes.filter(e => e.type === 'like'));
+                    document.getElementById('likesCount').textContent = filteredLikes.filter(e => e.type === 'like').length;
+                    break;
+                case 'gift':
+                    liveEventsCache.gifts.push(event);
+                    // Keep all gifts, no limit (but limit to 5000 for performance)
+                    if (liveEventsCache.gifts.length > 5000) {
+                        liveEventsCache.gifts = liveEventsCache.gifts.slice(-5000);
+                    }
+                    added = true;
+                    const filteredGifts = searchFilter ? filterEventsBySearch(liveEventsCache.gifts, searchFilter) : liveEventsCache.gifts;
+                    renderGiftsPanel(filteredGifts.filter(e => e.type === 'gift'));
+                    document.getElementById('giftsCount').textContent = filteredGifts.filter(e => e.type === 'gift').length;
+                    break;
+                case 'roomUser':
+                    liveEventsCache.views.push(event);
+                    // Keep all views, no limit (but limit to 5000 for performance)
+                    if (liveEventsCache.views.length > 5000) {
+                        liveEventsCache.views = liveEventsCache.views.slice(-5000);
+                    }
+                    added = true;
+                    const filteredViews = searchFilter ? filterEventsBySearch(liveEventsCache.views, searchFilter) : liveEventsCache.views;
+                    renderViewsPanel(filteredViews.filter(e => e.type === 'roomUser'));
+                    document.getElementById('viewsCount').textContent = filteredViews.filter(e => e.type === 'roomUser').length;
+                    break;
+                case 'member':
+                    const actionType = (event.data?.actionType || '').toLowerCase();
+                    if (actionType !== 'leave' && actionType !== 'left') {
+                        liveEventsCache.joins.push(event);
+                        // Keep all joins, no limit (but limit to 5000 for performance)
+                        if (liveEventsCache.joins.length > 5000) {
+                            liveEventsCache.joins = liveEventsCache.joins.slice(-5000);
+                        }
+                        added = true;
+                        const filteredJoins = searchFilter ? filterEventsBySearch(liveEventsCache.joins, searchFilter) : liveEventsCache.joins;
+                        const joinsFiltered = filteredJoins.filter(e => {
+                            if (!e || e.type !== 'member') return false;
+                            const actType = (e.data?.actionType || '').toLowerCase();
+                            return actType !== 'leave' && actType !== 'left';
+                        });
+                        renderJoinsPanel(joinsFiltered);
+                        document.getElementById('joinsCount').textContent = joinsFiltered.length;
+                    }
+                    break;
+                case 'social':
+                    if (event.data?.socialAction === 'share' || event.data?.actionType === 'share') {
+                        liveEventsCache.shares.push(event);
+                        // Keep all shares, no limit (but limit to 5000 for performance)
+                        if (liveEventsCache.shares.length > 5000) {
+                            liveEventsCache.shares = liveEventsCache.shares.slice(-5000);
+                        }
+                        added = true;
+                        const filteredShares = searchFilter ? filterEventsBySearch(liveEventsCache.shares, searchFilter) : liveEventsCache.shares;
+                        const sharesFiltered = filteredShares.filter(e => e && e.type === 'social' && (e.data?.socialAction === 'share' || e.data?.actionType === 'share'));
+                        renderSharesPanel(sharesFiltered);
+                        document.getElementById('sharesCount').textContent = sharesFiltered.length;
+                    } else if (event.data?.socialAction === 'follow' || event.data?.actionType === 'follow') {
+                        liveEventsCache.followers.push(event);
+                        // Keep all followers, no limit (but limit to 5000 for performance)
+                        if (liveEventsCache.followers.length > 5000) {
+                            liveEventsCache.followers = liveEventsCache.followers.slice(-5000);
+                        }
+                        added = true;
+                        const filteredFollowers = searchFilter ? filterEventsBySearch(liveEventsCache.followers, searchFilter) : liveEventsCache.followers;
+                        const followersFiltered = filteredFollowers.filter(e => e && e.type === 'social' && (e.data?.socialAction === 'follow' || e.data?.actionType === 'follow'));
+                        renderFollowersPanel(followersFiltered);
+                        document.getElementById('followersCount').textContent = followersFiltered.length;
+                    }
+                    break;
+            }
+            
+            // Update active commenters for chat events
+            if (added && event.type === 'chat') {
+                calculateActiveCommenters([event]);
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            if (isLive) {
+                // For LIVE: refresh less frequently (every 30 seconds) since Socket.IO handles real-time events
+                // This is mainly for syncing session stats and chart data, and catching any missed Socket.IO events
+                refreshInterval = setInterval(async () => {
+                    if (isLive) {
+                        // Update session status without resetting cache
+                        try {
+                            const session = await api.get(`/api/live/sessions/${currentSessionId}`);
+                            currentSession = session; // Update currentSession for updateStatusBar
+                            isLive = session.status === 'live';
+                            
+                            // Update header and status if needed
+                            document.getElementById('sessionHeader').textContent = `@${session.handle}`;
+                            updateStatusBar();
+                            updateLiveStats();
+                            
+                            // If session ended, reload everything
+                            if (!isLive) {
+                                await loadSession();
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('[Session View] Error refreshing session:', error);
+                        }
+                        
+                        // Update chart without resetting event cache
+                        await loadChartData();
+                    }
+                }, 30000); // 30 seconds for live sessions (Socket.IO handles instant events)
+            } else {
+                // For ENDED: no auto-refresh needed (events are static)
+                // Clear any existing interval
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+        }
+
+        function formatTime(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function formatDateTime(date) {
+            if (!date) return 'N/A';
+            const dateObj = date instanceof Date ? date : new Date(date);
+            if (isNaN(dateObj.getTime())) return 'N/A';
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showImageModal(imageUrl, nickname) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageUrl;
+            modalImage.alt = nickname;
+            modal.classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.add('hidden');
+        }
+
+        function logout() {
+            window.location.href = '/api/auth/logout';
+        }
+
+        async function exportSessionToExcel() {
+            try {
+                if (!currentSessionId) {
+                    if (window.showError) showError('No session ID available');
+                    return;
+                }
+                
+                const exportBtn = document.getElementById('exportExcelBtn');
+                const originalHTML = exportBtn.innerHTML;
+                exportBtn.disabled = true;
+                exportBtn.innerHTML = '<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+                
+                // Create a link to download the file
+                const link = document.createElement('a');
+                link.href = `/api/live/sessions/${currentSessionId}/export/excel`;
+                link.download = `session_${currentSessionId.substring(0, 8)}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success message
+                if (window.showSuccess) {
+                    showSuccess('Export started! File will download shortly.');
+                }
+                
+                // Reset button after a delay
+                setTimeout(() => {
+                    exportBtn.disabled = false;
+                    exportBtn.innerHTML = originalHTML;
+                }, 2000);
+            } catch (error) {
+                console.error('Export error:', error);
+                if (window.showError) {
+                    showError('Error exporting to Excel. Please try again.');
+                }
+                const exportBtn = document.getElementById('exportExcelBtn');
+                if (exportBtn) {
+                    exportBtn.disabled = false;
+                    exportBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Export Excel';
+                }
+            }
+        }
+
+        // Search functionality (diacritic-insensitive)
+        function filterEventsBySearch(events, searchTerm) {
+            if (!searchTerm || !searchTerm.trim()) {
+                return events;
+            }
+            
+            const term = normalizeDiacritics(searchTerm.trim().replace('@', ''));
+            
+            return events.filter(event => {
+                // Search in user handle/username/nickname (diacritic-insensitive)
+                if (event.user) {
+                    const handle = normalizeDiacritics(event.user.uniqueId || event.user.username || event.user.nickname || '');
+                    if (handle.includes(term)) {
+                        return true;
+                    }
+                }
+                
+                // Search in message/comment text (diacritic-insensitive)
+                if (event.data) {
+                    const message = normalizeDiacritics(event.data.comment || event.data.text || event.data.message || '');
+                    if (message.includes(term)) {
+                        return true;
+                    }
+                    
+                    // Search in gift name (diacritic-insensitive)
+                    const giftName = normalizeDiacritics(event.data.giftName || event.data.name || '');
+                    if (giftName.includes(term)) {
+                        return true;
+                    }
+                }
+                
+                // Search in event type (case-insensitive only, no diacritics usually)
+                if (event.type && event.type.toLowerCase().includes(term)) {
+                    return true;
+                }
+                
+                return false;
+            });
+        }
+
+        // Normalize diacritics (remove accents) for search matching
+        function normalizeDiacritics(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        // Highlight search term in text (with diacritic-insensitive matching)
+        function highlightText(text, searchTerm) {
+            if (!searchTerm || !searchTerm.trim() || !text) {
+                return escapeHtml(text);
+            }
+            
+            const term = searchTerm.trim().replace('@', '');
+            if (!term) {
+                return escapeHtml(text);
+            }
+            
+            // Escape HTML first
+            const escapedText = escapeHtml(text);
+            
+            // Normalize both text and search term for diacritic-insensitive matching
+            const normalizedText = normalizeDiacritics(text);
+            const normalizedTerm = normalizeDiacritics(term);
+            
+            // Find all matches (case and diacritic insensitive)
+            const matches = [];
+            let index = normalizedText.indexOf(normalizedTerm);
+            while (index !== -1) {
+                matches.push({
+                    start: index,
+                    end: index + normalizedTerm.length,
+                    original: text.substring(index, index + normalizedTerm.length)
+                });
+                index = normalizedText.indexOf(normalizedTerm, index + 1);
+            }
+            
+            // If no matches found, return escaped text
+            if (matches.length === 0) {
+                return escapedText;
+            }
+            
+            // Build highlighted text by replacing matches
+            let result = '';
+            let lastIndex = 0;
+            
+            matches.forEach(match => {
+                // Add text before match
+                result += escapedText.substring(lastIndex, match.start);
+                // Add highlighted match (use original text from escapedText)
+                const matchText = escapedText.substring(match.start, match.end);
+                result += `<mark class="bg-yellow-300 text-gray-900 px-0.5 rounded">${matchText}</mark>`;
+                lastIndex = match.end;
+            });
+            
+            // Add remaining text
+            result += escapedText.substring(lastIndex);
+            
+            return result;
+        }
+
+        // Escape special regex characters
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function showAutocomplete(query) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (!query || query.trim().length < 1) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            
+            const term = normalizeDiacritics(query.trim().replace('@', ''));
+            const matches = Array.from(uniqueUsers).filter(user => {
+                const normalizedUser = normalizeDiacritics(user);
+                return normalizedUser.includes(term);
+            }).slice(0, 10); // Show max 10 suggestions
+            
+            if (matches.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            
+            dropdown.innerHTML = matches.map(user => `
+                <div class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" onclick="selectUser('${user}')">
+                    @${user}
+                </div>
+            `).join('');
+            
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectUser(userHandle) {
+            const input = document.getElementById('userSearchInput');
+            input.value = `@${userHandle}`;
+            document.getElementById('autocompleteDropdown').classList.add('hidden');
+            performSearch();
+        }
+
+        function performSearch() {
+            const input = document.getElementById('userSearchInput');
+            searchFilter = input.value.trim();
+            const clearBtn = document.getElementById('clearSearchBtn');
+            
+            if (searchFilter) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            
+            // Reload events with filter
+            if (allEvents.length > 0) {
+                // Re-filter existing events
+                const filteredEvents = filterEventsBySearch(allEvents, searchFilter);
+                
+                if (isLive) {
+                    // Update cache with filtered events
+                    liveEventsCache.chats = filteredEvents.filter(e => e && e.type === 'chat').reverse();
+                    liveEventsCache.likes = filteredEvents.filter(e => e && e.type === 'like').reverse();
+                    liveEventsCache.gifts = filteredEvents.filter(e => e && e.type === 'gift').reverse();
+                    liveEventsCache.views = filteredEvents.filter(e => e && e.type === 'roomUser').reverse();
+                    liveEventsCache.joins = filteredEvents.filter(e => {
+                        if (!e || e.type !== 'member') return false;
+                        const actionType = (e.data?.actionType || '').toLowerCase();
+                        return actionType !== 'leave' && actionType !== 'left';
+                    }).reverse();
+                    liveEventsCache.shares = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('share') || e.data?.socialAction === 'share' || e.data?.actionType === 'share')).reverse();
+                    liveEventsCache.followers = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('follow') || e.data?.socialAction === 'follow' || e.data?.actionType === 'follow')).reverse();
+                    
+                    // Re-render panels
+                    renderChatsPanel(liveEventsCache.chats);
+                    renderLikesPanel(liveEventsCache.likes);
+                    renderGiftsPanel(liveEventsCache.gifts);
+                    renderViewsPanel(liveEventsCache.views);
+                    renderJoinsPanel(liveEventsCache.joins);
+                    renderSharesPanel(liveEventsCache.shares);
+                    renderFollowersPanel(liveEventsCache.followers);
+                    
+                    // Update counts
+                    document.getElementById('chatsCount').textContent = liveEventsCache.chats.length;
+                    document.getElementById('likesCount').textContent = liveEventsCache.likes.length;
+                    document.getElementById('giftsCount').textContent = liveEventsCache.gifts.length;
+                    document.getElementById('viewsCount').textContent = liveEventsCache.views.length;
+                    document.getElementById('joinsCount').textContent = liveEventsCache.joins.length;
+                    document.getElementById('sharesCount').textContent = liveEventsCache.shares.length;
+                    document.getElementById('followersCount').textContent = liveEventsCache.followers.length;
+                } else {
+                    // ENDED session: re-render with filtered events
+                    const chats = filteredEvents.filter(e => e && e.type === 'chat').reverse();
+                    const likes = filteredEvents.filter(e => e && e.type === 'like').reverse();
+                    const gifts = filteredEvents.filter(e => e && e.type === 'gift').reverse();
+                    const views = filteredEvents.filter(e => e && e.type === 'roomUser').reverse();
+                    const joins = filteredEvents.filter(e => {
+                        if (!e || e.type !== 'member') return false;
+                        const actionType = (e.data?.actionType || '').toLowerCase();
+                        return actionType !== 'leave' && actionType !== 'left';
+                    }).reverse();
+                    const shares = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('share') || e.data?.socialAction === 'share' || e.data?.actionType === 'share')).reverse();
+                    const followers = filteredEvents.filter(e => e && e.type === 'social' && (e.data?.displayType?.includes('follow') || e.data?.socialAction === 'follow' || e.data?.actionType === 'follow')).reverse();
+                    
+                    renderChatsPanel(chats);
+                    renderLikesPanel(likes);
+                    renderGiftsPanel(gifts);
+                    renderViewsPanel(views);
+                    renderJoinsPanel(joins);
+                    renderSharesPanel(shares);
+                    renderFollowersPanel(followers);
+                    
+                    // Update counts
+                    document.getElementById('chatsCount').textContent = chats.length;
+                    document.getElementById('likesCount').textContent = likes.length;
+                    document.getElementById('giftsCount').textContent = gifts.length;
+                    document.getElementById('viewsCount').textContent = views.length;
+                    document.getElementById('joinsCount').textContent = joins.length;
+                    document.getElementById('sharesCount').textContent = shares.length;
+                    document.getElementById('followersCount').textContent = followers.length;
+                }
+                
+                // Update active commenters
+                allChatEvents = filteredEvents.filter(e => e.type === 'chat');
+                calculateActiveCommenters([]);
+            } else {
+                // Reload from API if events not cached
+                loadEvents();
+            }
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('userSearchInput');
+            input.value = '';
+            searchFilter = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            document.getElementById('autocompleteDropdown').classList.add('hidden');
+            performSearch();
+        }
+
+        // Initialize search functionality when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeSearch);
+        } else {
+            initializeSearch();
+        }
+
+        function initializeSearch() {
+            const searchInput = document.getElementById('userSearchInput');
+            if (searchInput) {
+                let searchTimeout;
+                
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    const query = e.target.value;
+                    
+                    // Show autocomplete
+                    showAutocomplete(query);
+                    
+                    // Debounce search
+                    searchTimeout = setTimeout(() => {
+                        performSearch();
+                    }, 300);
+                });
+                
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        performSearch();
+                        document.getElementById('autocompleteDropdown').classList.add('hidden');
+                    } else if (e.key === 'Escape') {
+                        document.getElementById('autocompleteDropdown').classList.add('hidden');
+                    }
+                });
+                
+                // Close autocomplete when clicking outside
+                document.addEventListener('click', (e) => {
+                    const dropdown = document.getElementById('autocompleteDropdown');
+                    if (dropdown && !searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
+        // Expose functions to window
+        window.exportSessionToExcel = exportSessionToExcel;
+        window.selectUser = selectUser;
+        window.clearSearch = clearSearch;
+        
+        // Toast notification helpers (if not already defined)
+        if (!window.showSuccess) {
+            window.showSuccess = (msg) => console.log('Success:', msg);
+        }
+        if (!window.showError) {
+            window.showError = (msg) => console.error('Error:', msg);
+        }
+    </script>
+    <%- include('partials/toast-notifications') %>
+</body>
+</html>

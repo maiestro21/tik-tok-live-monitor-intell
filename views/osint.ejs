@@ -1,0 +1,468 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'osint' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">OSINT - TikTok Intelligence</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Open Source Intelligence Gathering</p>
+                    </div>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <!-- Search Section -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-1">
+                            <label for="osintSearch" class="block text-sm font-medium text-gray-700 mb-2">
+                                Search TikTok User
+                            </label>
+                            <input 
+                                type="text" 
+                                id="osintSearch" 
+                                placeholder="Enter username (e.g., @username or username)" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        <div class="pt-6">
+                            <button 
+                                id="searchBtn"
+                                class="px-6 py-3 bg-gray-900 text-white text-base font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden bg-white border border-gray-200 rounded-lg p-8 text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+                    <p class="text-gray-600">Gathering intelligence...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <h3 class="text-red-800 font-semibold">Error</h3>
+                            <p id="errorMessage" class="text-red-600 text-sm"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="hidden space-y-6">
+                    <!-- Profile Header -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0">
+                                <img 
+                                    id="profilePicture" 
+                                    src="" 
+                                    alt="Profile" 
+                                    class="w-24 h-24 rounded-full border-2 border-gray-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                    onclick="showProfileImage()"
+                                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath fill=%27%23999%27 d=%27M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%27/%3E%3C/svg%3E'"
+                                >
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h2 id="userNickname" class="text-2xl font-bold text-gray-900"></h2>
+                                    <span id="verifiedBadge" class="hidden">
+                                        <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </span>
+                                    <span id="privateBadge" class="hidden px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                                        Private
+                                    </span>
+                                </div>
+                                <p id="userHandle" class="text-gray-600 mb-2">@<span id="handleText"></span></p>
+                                <p id="userSignature" class="text-gray-700 mb-4"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Information -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Account Information -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">User ID</div>
+                                    <div id="userId" class="text-sm font-mono text-gray-900">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Unique ID</div>
+                                    <div id="uniqueId" class="text-sm font-mono text-gray-900">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Sec UID</div>
+                                    <div id="secUid" class="text-sm font-mono text-gray-900 break-all">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status & Settings -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Status & Settings</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-700">Verified</span>
+                                    <span id="verifiedStatus" class="px-2 py-1 text-xs font-medium rounded"></span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-700">Secret Account</span>
+                                    <span id="secretStatus" class="px-2 py-1 text-xs font-medium rounded"></span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-700">Private Account</span>
+                                    <span id="privateStatus" class="px-2 py-1 text-xs font-medium rounded"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location & Language -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Location & Language</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Language</div>
+                                    <div id="language" class="text-sm text-gray-900">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Region</div>
+                                    <div id="region" class="text-sm text-gray-900">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timestamps -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Timestamps</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Account Created</div>
+                                    <div id="creationDate" class="text-sm text-gray-900">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Username Changed</div>
+                                    <div id="uniqueIdModifyTime" class="text-sm text-gray-900">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Display Name Changed</div>
+                                    <div id="nickNameModifyTime" class="text-sm text-gray-900">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Analysis -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Analysis</h3>
+                        
+                        <div id="activityNoData" class="hidden text-center py-8 text-gray-500">
+                            <p>No activity data available</p>
+                        </div>
+                        
+                        <div id="activityContent" class="hidden space-y-6">
+                            <!-- Summary Stats -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Videos</div>
+                                    <div id="totalVideos" class="text-2xl font-bold text-gray-900">0</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Most Active Day</div>
+                                    <div id="mostActiveDay" class="text-lg font-semibold text-gray-900">-</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Most Active Hour</div>
+                                    <div id="mostActiveHour" class="text-lg font-semibold text-gray-900">-</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg per Day</div>
+                                    <div id="avgPerDay" class="text-lg font-semibold text-gray-900">-</div>
+                                </div>
+                            </div>
+
+                            <!-- Frequency by Day of Week -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900 mb-3">Posting Frequency by Day of Week</h4>
+                                <div id="dayChart" class="space-y-2">
+                                    <!-- Chart bars will be inserted here -->
+                                </div>
+                            </div>
+
+                            <!-- Frequency by Hour of Day -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900 mb-3">Posting Frequency by Hour of Day</h4>
+                                <div id="hourChart" class="grid grid-cols-12 gap-1">
+                                    <!-- Chart bars will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Search Metadata</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Searched At</div>
+                                <div id="searchedAt" class="text-sm text-gray-900">-</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Data Source</div>
+                                <div id="dataSource" class="text-sm text-gray-900">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Profile Image Modal -->
+    <div id="profileImageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="closeProfileImage()">
+        <div class="relative max-w-4xl max-h-full" onclick="event.stopPropagation()">
+            <button onclick="closeProfileImage()" class="absolute top-2 right-2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <div class="bg-white rounded-lg p-4">
+                <div class="text-center mb-3">
+                    <h3 id="modalNickname" class="text-lg font-semibold text-gray-900"></h3>
+                    <p id="modalHandle" class="text-sm text-gray-600"></p>
+                </div>
+                <img id="modalProfileImage" src="" alt="Profile" class="max-w-full max-h-[80vh] rounded-lg object-contain mx-auto" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE2MCIgcj0iNjAiIGZpbGw9IiM5QkEzQUYiLz4KPHBhdGggZD0iTTIwMCAyNDBDMTY3LjQgMjQwIDE0MCAyNjcuNCAxNDAgMzAwVjM0MEgyNjBWMzAwQzI2MCAyNjcuNCAyMzIuNiAyNDAgMjAwIDI0MFoiIGZpbGw9IiM5QkEzQUYiLz4KPC9zdmc+'">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use the global api from fetch-helpers.js
+        // api is already defined globally by fetch-helpers.js
+
+        function formatNumber(num) {
+            if (!num && num !== 0) return '-';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toLocaleString();
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Never';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString();
+            } catch {
+                return dateString;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('searchBtn').disabled = true;
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('searchBtn').disabled = false;
+        }
+
+        function showResults(data) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('searchBtn').disabled = false;
+
+            // Profile Header
+            document.getElementById('profilePicture').src = data.basic.profilePictureUrl || '';
+            document.getElementById('userNickname').textContent = data.basic.nickname || data.handle;
+            document.getElementById('handleText').textContent = data.handle;
+            document.getElementById('userSignature').textContent = data.basic.signature || 'No bio available';
+
+            // Badges
+            if (data.status.verified) {
+                document.getElementById('verifiedBadge').classList.remove('hidden');
+            } else {
+                document.getElementById('verifiedBadge').classList.add('hidden');
+            }
+            if (data.status.privateAccount) {
+                document.getElementById('privateBadge').classList.remove('hidden');
+            } else {
+                document.getElementById('privateBadge').classList.add('hidden');
+            }
+
+            // Account Information
+            document.getElementById('userId').textContent = data.identifiers.userId || 'N/A';
+            document.getElementById('uniqueId').textContent = data.uniqueId || 'N/A';
+            document.getElementById('secUid').textContent = data.identifiers.secUid || 'N/A';
+
+            // Status
+            document.getElementById('verifiedStatus').textContent = data.status.verified ? 'Yes' : 'No';
+            document.getElementById('verifiedStatus').className = data.status.verified 
+                ? 'px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800' 
+                : 'px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800';
+            
+            document.getElementById('secretStatus').textContent = data.status.secret ? 'Yes' : 'No';
+            document.getElementById('secretStatus').className = data.status.secret 
+                ? 'px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800' 
+                : 'px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800';
+            
+            document.getElementById('privateStatus').textContent = data.status.privateAccount ? 'Yes' : 'No';
+            document.getElementById('privateStatus').className = data.status.privateAccount 
+                ? 'px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800' 
+                : 'px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800';
+
+            // Location & Language
+            document.getElementById('language').textContent = data.location.language || 'N/A';
+            document.getElementById('region').textContent = data.location.region || 'N/A';
+
+            // Timestamps
+            document.getElementById('creationDate').textContent = formatDate(data.timestamps.creationDate);
+            document.getElementById('uniqueIdModifyTime').textContent = formatDate(data.timestamps.uniqueIdModifyTime);
+            document.getElementById('nickNameModifyTime').textContent = formatDate(data.timestamps.nickNameModifyTime);
+
+            // Activity Analysis
+            if (data.activity && data.activity.totalVideos > 0) {
+                document.getElementById('activityNoData').classList.add('hidden');
+                document.getElementById('activityContent').classList.remove('hidden');
+                
+                // Summary stats
+                document.getElementById('totalVideos').textContent = data.activity.totalVideos;
+                document.getElementById('mostActiveDay').textContent = data.activity.frequency.patterns.mostActiveDay || 'N/A';
+                const mostActiveHour = data.activity.frequency.patterns.mostActiveHour;
+                document.getElementById('mostActiveHour').textContent = mostActiveHour !== null ? `${mostActiveHour}:00` : 'N/A';
+                document.getElementById('avgPerDay').textContent = data.activity.frequency.patterns.averagePerDay.toFixed(2);
+                
+                // Day of week chart
+                const dayChart = document.getElementById('dayChart');
+                dayChart.innerHTML = '';
+                const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const byDay = data.activity.frequency.byDay || {};
+                const maxDayCount = Math.max(...Object.values(byDay), 1);
+                
+                daysOrder.forEach(day => {
+                    const count = byDay[day] || 0;
+                    const percentage = maxDayCount > 0 ? (count / maxDayCount) * 100 : 0;
+                    const bar = document.createElement('div');
+                    bar.className = 'flex items-center gap-3';
+                    bar.innerHTML = `
+                        <div class="w-20 text-xs text-gray-600 font-medium">${day.substring(0, 3)}</div>
+                        <div class="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
+                            <div class="bg-blue-600 h-full rounded-full transition-all" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="w-12 text-xs text-gray-900 font-semibold text-right">${count}</div>
+                    `;
+                    dayChart.appendChild(bar);
+                });
+                
+                // Hour of day chart
+                const hourChart = document.getElementById('hourChart');
+                hourChart.innerHTML = '';
+                const byHour = data.activity.frequency.byHour || {};
+                const maxHourCount = Math.max(...Object.values(byHour), 1);
+                
+                for (let hour = 0; hour < 24; hour++) {
+                    const count = byHour[hour] || 0;
+                    const percentage = maxHourCount > 0 ? (count / maxHourCount) * 100 : 0;
+                    const bar = document.createElement('div');
+                    bar.className = 'flex flex-col items-center gap-1';
+                    bar.innerHTML = `
+                        <div class="text-xs text-gray-600">${hour}</div>
+                        <div class="w-full bg-gray-200 rounded-t overflow-hidden" style="height: 80px; display: flex; flex-direction: column-reverse;">
+                            <div class="bg-green-600 w-full transition-all" style="height: ${percentage}%"></div>
+                        </div>
+                        <div class="text-xs text-gray-900 font-semibold">${count}</div>
+                    `;
+                    hourChart.appendChild(bar);
+                }
+            } else {
+                document.getElementById('activityNoData').classList.remove('hidden');
+                document.getElementById('activityContent').classList.add('hidden');
+            }
+
+            // Metadata
+            document.getElementById('searchedAt').textContent = formatDate(data.metadata.searchedAt);
+            document.getElementById('dataSource').textContent = data.metadata.source || 'N/A';
+        }
+
+        async function searchUser() {
+            const input = document.getElementById('osintSearch');
+            const handle = input.value.trim();
+            
+            if (!handle) {
+                showError('Please enter a username');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const data = await api.post('/osint/search', { handle });
+                showResults(data);
+            } catch (error) {
+                showError(error.message || 'Failed to fetch user information');
+            }
+        }
+
+        // Profile image zoom functions
+        function showProfileImage() {
+            const profilePic = document.getElementById('profilePicture');
+            const nickname = document.getElementById('userNickname').textContent;
+            const handle = '@' + document.getElementById('handleText').textContent;
+            
+            if (!profilePic.src || profilePic.src.includes('data:image/svg')) {
+                return; // Don't show modal if no image
+            }
+            
+            const modal = document.getElementById('profileImageModal');
+            const modalImg = document.getElementById('modalProfileImage');
+            const modalNickname = document.getElementById('modalNickname');
+            const modalHandle = document.getElementById('modalHandle');
+            
+            modalImg.src = profilePic.src;
+            modalNickname.textContent = nickname;
+            modalHandle.textContent = handle;
+            modal.classList.remove('hidden');
+        }
+
+        function closeProfileImage() {
+            const modal = document.getElementById('profileImageModal');
+            modal.classList.add('hidden');
+        }
+
+        // Initialize event listeners when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Search button click
+            document.getElementById('searchBtn').addEventListener('click', searchUser);
+            
+            // Enter key in search input
+            document.getElementById('osintSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchUser();
+                }
+            });
+        });
+    </script>
+<%- include('partials/footer') %>

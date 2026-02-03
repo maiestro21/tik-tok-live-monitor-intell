@@ -1,0 +1,181 @@
+<%- include('partials/head') %>
+<body class="bg-gray-100 text-gray-900">
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: 'logs' }) %>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200 px-3 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Console Logs</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Debug & Troubleshooting</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="clearLogs()" class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                            Clear Logs
+                        </button>
+                        <button onclick="refreshLogs()" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Filters -->
+            <div class="bg-white border-b border-gray-200 px-3 py-2">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-600 uppercase tracking-wide">Level:</label>
+                        <select id="levelFilter" onchange="applyFilters()" class="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <option value="">All</option>
+                            <option value="error">Error</option>
+                            <option value="warn">Warning</option>
+                            <option value="info">Info</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 flex-1">
+                        <label class="text-xs text-gray-600 uppercase tracking-wide">Search:</label>
+                        <input type="text" id="searchFilter" onkeyup="applyFilters()" placeholder="Search logs..." class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Table -->
+            <main class="flex-1 overflow-y-auto p-3">
+                <div class="bg-white border border-gray-200 rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Metadata</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async delete(url) {
+                const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        async function loadLogs() {
+            const level = document.getElementById('levelFilter').value;
+            const search = document.getElementById('searchFilter').value;
+            
+            const params = new URLSearchParams();
+            if (level) params.append('level', level);
+            if (search) params.append('search', search);
+            params.append('limit', '500');
+            
+            try {
+                const data = await api.get(`/api/logs?${params.toString()}`);
+                renderLogs(data.logs);
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                document.getElementById('logsTableBody').innerHTML = 
+                    `<tr><td colspan="4" class="px-3 py-4 text-center text-red-500">Error loading logs: ${error.message}</td></tr>`;
+            }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">No logs found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = logs.map(log => {
+                const levelColors = {
+                    error: 'bg-red-100 text-red-800',
+                    warn: 'bg-yellow-100 text-yellow-800',
+                    info: 'bg-blue-100 text-blue-800',
+                    debug: 'bg-gray-100 text-gray-800'
+                };
+                
+                const levelColor = levelColors[log.level] || 'bg-gray-100 text-gray-800';
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const metadata = log.metadata && Object.keys(log.metadata).length > 0 
+                    ? `<pre class="text-xs bg-gray-50 p-2 rounded overflow-x-auto">${escapeHtml(JSON.stringify(log.metadata, null, 2))}</pre>`
+                    : '-';
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 metric-value text-gray-600">${escapeHtml(timestamp)}</td>
+                        <td class="px-3 py-2">
+                            <span class="px-2 py-1 text-xs font-medium rounded ${levelColor}">${escapeHtml(log.level.toUpperCase())}</span>
+                        </td>
+                        <td class="px-3 py-2 text-gray-900 font-mono text-xs">${escapeHtml(log.message)}</td>
+                        <td class="px-3 py-2">${metadata}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function applyFilters() {
+            loadLogs();
+        }
+
+        async function refreshLogs() {
+            await loadLogs();
+        }
+
+        async function clearLogs() {
+            if (!confirm('Are you sure you want to clear all logs?')) {
+                return;
+            }
+            
+            try {
+                await api.delete('/api/logs');
+                await loadLogs();
+                if (window.showSuccess) showSuccess('Logs cleared successfully');
+                else alert('Logs cleared successfully');
+            } catch (error) {
+                if (window.showError) showError(`Error clearing logs: ${error.message}`);
+                else alert(`Error clearing logs: ${error.message}`);
+            }
+        }
+
+        // Auto-refresh every 10 seconds
+        setInterval(loadLogs, 10000);
+
+        // Load logs on page load
+        loadLogs();
+
+        function logout() {
+            window.location.href = '/api/auth/logout';
+        }
+    </script>
+</body>
+</html>

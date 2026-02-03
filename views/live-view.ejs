@@ -1,0 +1,177 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'live-view' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Live View</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Currently Active Live Sessions</p>
+                    </div>
+                    <button onclick="refreshLiveSessions()" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                        Refresh
+                    </button>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Active Live Sessions List -->
+                <div id="liveSessionsContainer" class="space-y-3">
+                    <div class="bg-white border border-gray-200 rounded p-4 text-center text-gray-500">
+                        <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mb-2"></div>
+                        <p>Loading live sessions...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        async function loadLiveSessions() {
+            const container = document.getElementById('liveSessionsContainer');
+            
+            try {
+                const sessions = await api.get('/api/live/active');
+                
+                if (sessions.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">No Active Live Sessions</h3>
+                            <p class="text-sm text-gray-500">There are currently no users streaming live.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = sessions.map(session => {
+                    const startTime = new Date(session.startTime);
+                    const duration = Math.floor((new Date() - startTime) / 1000);
+                    const hours = Math.floor(duration / 3600);
+                    const minutes = Math.floor((duration % 3600) / 60);
+                    const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    
+                    const stats = session.stats || {};
+                    const profilePic = session.account.profilePictureUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTMyIDI0QzI4LjY4IDI0IDI2IDI2LjY4IDI2IDMwQzI2IDMzLjMyIDI4LjY4IDM2IDMyIDM2QzM1LjMyIDM2IDM4IDMzLjMyIDM4IDMwQzM4IDI2LjY4IDM1LjMyIDI0IDMyIDI0Wk0zMiA0MEMyNy41ODQgNDAgMjQgNDIuNTg0IDI0IDQ3VjUwSDQwVjQ3QzQwIDQyLjU4NCAzNi40MTYgNDAgMzIgNDBaIiBmaWxsPSIjOUJBM0FGIi8+Cjwvc3ZnPg==';
+                    
+                    return `
+                        <div class="bg-white border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="viewSession('${session.sessionId}')">
+                            <div class="flex items-start gap-4">
+                                <!-- Profile Picture -->
+                                <img src="${profilePic}" 
+                                     alt="${escapeHtml(session.account.nickname)}" 
+                                     class="w-16 h-16 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHBhdGggZD0iTTMyIDI0QzI4LjY4IDI0IDI2IDI2LjY4IDI2IDMwQzI2IDMzLjMyIDI4LjY4IDM2IDMyIDM2QzM1LjMyIDM2IDM4IDMzLjMyIDM4IDMwQzM4IDI2LjY4IDM1LjMyIDI0IDMyIDI0Wk0zMiA0MEMyNy41ODQgNDAgMjQgNDIuNTg0IDI0IDQ3VjUwSDQwVjQ3QzQwIDQyLjU4NCAzNi40MTYgNDAgMzIgNDBaIiBmaWxsPSIjOUJBM0FGIi8+Cjwvc3ZnPg==';">
+                                
+                                <!-- Session Info -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div>
+                                            <h3 class="text-base font-semibold text-gray-900">@${escapeHtml(session.handle)}</h3>
+                                            <p class="text-sm text-gray-600">${escapeHtml(session.account.nickname)}</p>
+                                        </div>
+                                        <span class="px-3 py-1 text-xs font-semibold bg-red-600 text-white rounded-full flex items-center gap-1">
+                                            <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                            LIVE
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-3">
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Duration</p>
+                                            <p class="metric-value text-sm font-bold text-gray-900">${durationText}</p>
+                                        </div>
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Viewers</p>
+                                            <p class="metric-value text-sm font-bold text-blue-600">${(stats.totalViewers || 0).toLocaleString()}</p>
+                                        </div>
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Likes</p>
+                                            <p class="metric-value text-sm font-bold text-green-600">${(stats.totalLikes || 0).toLocaleString()}</p>
+                                        </div>
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Gifts</p>
+                                            <p class="metric-value text-sm font-bold text-purple-600">${(stats.totalGifts || 0).toLocaleString()}</p>
+                                        </div>
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Messages</p>
+                                            <p class="metric-value text-sm font-bold text-indigo-600">${(stats.totalMessages || 0).toLocaleString()}</p>
+                                        </div>
+                                        <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Started</p>
+                                            <p class="metric-value text-xs font-medium text-gray-900">${formatDateTime(startTime)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Watch Button -->
+                                <div class="flex-shrink-0">
+                                    <button onclick="event.stopPropagation(); viewSession('${session.sessionId}')" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors">
+                                        Watch Live
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading live sessions:', error);
+                container.innerHTML = `
+                    <div class="bg-white border border-red-200 rounded-lg p-4 text-center text-red-600">
+                        <p>Error loading live sessions: ${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDateTime(date) {
+            if (!date) return 'N/A';
+            const dateObj = date instanceof Date ? date : new Date(date);
+            if (isNaN(dateObj.getTime())) return 'N/A';
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+
+        function viewSession(sessionId) {
+            window.location.href = `/session-view?sessionId=${sessionId}`;
+        }
+
+        function refreshLiveSessions() {
+            loadLiveSessions();
+        }
+
+        // Auto-refresh every 10 seconds
+        setInterval(loadLiveSessions, 10000);
+
+        // Load on page load
+        loadLiveSessions();
+
+        function logout() {
+            window.location.href = '/api/auth/logout';
+        }
+    </script>
+</body>
+</html>

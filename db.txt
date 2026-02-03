@@ -1,0 +1,5 @@
+databse=tiktok_monitor
+user=localuser
+password=localuser
+server=127.0.0.1
+port=5432

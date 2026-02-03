@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-blue: #1E3A8A;
+            --primary-blue-dark: #1E40AF;
+            --primary-blue-light: #3B82F6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+        }
+        .metric-value {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+        }
+        .login-card {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        input:focus {
+            outline: 2px solid var(--primary-blue);
+            outline-offset: 2px;
+        }
+        button:focus {
+            outline: 2px solid var(--primary-blue);
+            outline-offset: 2px;
+        }
+        .gradient-line {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        .error-message {
+            color: #DC2626;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md">
+        <div class="login-card bg-white rounded-lg p-8 border border-gray-200">
+            <div class="text-center mb-8">
+                <div class="flex items-center justify-center mb-4">
+                    
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">T-int</h1>
+                <p class="text-xs text-gray-600 uppercase tracking-wide">Login to platform</p>
+            </div>
+
+            <div class="gradient-line h-px mb-8"></div>
+            <div id="errorMessage" class="hidden error-message text-center mb-4"></div>
+
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label for="username" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required 
+                        class="metric-value w-full px-4 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition-colors text-sm"
+                        placeholder="Enter username">
+                </div>
+                <div>
+                    <label for="password" class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-2">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required 
+                        class="metric-value w-full px-4 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition-colors text-sm"
+                        placeholder="••••••••">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" id="loginButton"
+                        class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="loginButtonText">Sign In</span>
+                        <span id="loginButtonSpinner" class="hidden">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <div class="text-center">
+                    <p class="text-xs text-gray-500 uppercase tracking-wide">Internal Access Only</p>
+                    <p class="text-xs text-gray-400 mt-2">Contact your administrator for account access</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (async function() {
+            try {
+                const response = await fetch('/api/auth/me', { credentials: 'include' });
+                if (response.ok) {
+                    window.location.href = '/dashboard';
+                }
+            } catch (error) {
+                // Not logged in, continue
+            }
+        })();
+
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const loginButton = document.getElementById('loginButton');
+        const loginButtonText = document.getElementById('loginButtonText');
+        const loginButtonSpinner = document.getElementById('loginButtonSpinner');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            errorMessage.classList.add('hidden');
+            loginButton.disabled = true;
+            loginButtonText.classList.add('hidden');
+            loginButtonSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    // Redirect to the page user tried to access, or dashboard
+                    const redirectUrl = data.redirect || '/dashboard';
+                    window.location.href = redirectUrl;
+                } else {
+                    errorMessage.textContent = data.error || 'Login failed';
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Network error. Please try again.';
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loginButton.disabled = false;
+                loginButtonText.classList.remove('hidden');
+                loginButtonSpinner.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

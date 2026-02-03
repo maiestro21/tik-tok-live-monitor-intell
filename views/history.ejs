@@ -1,0 +1,304 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'history' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <h1 class="text-lg font-semibold text-gray-900">Live Sessions History</h1>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Filters -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-1">Filter by User</label>
+                            <select id="userFilter" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                <option value="">All Users</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-1">Start Date</label>
+                            <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-1">End Date</label>
+                            <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="loadSessions()" class="w-full px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors">
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sessions Table -->
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-sm font-semibold text-gray-900">Sessions</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Handle</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Status</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Start Time</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">End Time</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Duration</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Viewers</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Likes</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Gifts</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Messages</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessionsTableBody" class="divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="10" class="px-4 py-4 text-center text-gray-500">Loading sessions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        let allSessions = [];
+
+        // Load accounts for filter
+        async function loadAccounts() {
+            try {
+                const accounts = await api.get('/api/tikusers');
+                const select = document.getElementById('userFilter');
+                select.innerHTML = '<option value="">All Users</option>' + 
+                    accounts.map(a => `<option value="${a.handle}">@${a.handle}</option>`).join('');
+            } catch (error) {
+                console.error('Load accounts error:', error);
+            }
+        }
+
+        // Load sessions with filters
+        async function loadSessions() {
+            try {
+                const userFilter = document.getElementById('userFilter').value;
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                let sessions = [];
+                
+                // If user filter is selected, get sessions for that user
+                if (userFilter) {
+                    sessions = await api.get(`/api/live/${userFilter}/history`);
+                } else {
+                    // Get all sessions
+                    sessions = await api.get('/api/live/sessions');
+                }
+                
+                // Filter by date range if provided
+                if (startDate || endDate) {
+                    sessions = sessions.filter(session => {
+                        const sessionDate = new Date(session.startTime);
+                        const start = startDate ? new Date(startDate) : null;
+                        const end = endDate ? new Date(endDate + 'T23:59:59') : null;
+                        
+                        if (start && sessionDate < start) return false;
+                        if (end && sessionDate > end) return false;
+                        return true;
+                    });
+                }
+                
+                allSessions = sessions;
+                renderSessions();
+            } catch (error) {
+                console.error('Load sessions error:', error);
+                document.getElementById('sessionsTableBody').innerHTML = 
+                    `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error loading sessions: ${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
+        // Render sessions table
+        function renderSessions() {
+            const tbody = document.getElementById('sessionsTableBody');
+            
+            if (allSessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-4 text-center text-gray-500">No sessions found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = allSessions.map(session => {
+                const startTime = new Date(session.startTime);
+                const endTime = session.endTime ? new Date(session.endTime) : null;
+                
+                let duration = '';
+                if (endTime) {
+                    const diffMs = endTime - startTime;
+                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+                    duration = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+                } else {
+                    duration = 'Ongoing';
+                }
+                
+                const statusBadge = session.status === 'live' 
+                    ? '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-600 text-white flex items-center gap-1 w-fit"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> LIVE</span>'
+                    : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-white">ENDED</span>';
+
+                const stats = session.stats || {};
+
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <span class="text-sm font-medium text-gray-900">@${escapeHtml(session.handle)}</span>
+                        </td>
+                        <td class="px-4 py-3">${statusBadge}</td>
+                        <td class="px-4 py-3">
+                            <span class="metric-value text-xs text-gray-900">${formatDateTime(startTime)}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            ${endTime ? `<span class="metric-value text-xs text-gray-900">${formatDateTime(endTime)}</span>` : '<span class="text-xs text-gray-400">-</span>'}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="text-xs text-gray-700">${duration}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="metric-value text-xs font-medium text-blue-600">${(stats.totalViewers || 0).toLocaleString()}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="metric-value text-xs font-medium text-green-600">${(stats.totalLikes || 0).toLocaleString()}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="metric-value text-xs font-medium text-purple-600">${(stats.totalGifts || 0).toLocaleString()}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="metric-value text-xs font-medium text-indigo-600">${(stats.totalMessages || 0).toLocaleString()}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="viewSession('${session.sessionId}')" class="px-3 py-1 text-xs bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors">
+                                        View
+                                    </button>
+                                    <button onclick="exportSessionExcel('${session.sessionId}')" class="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1" title="Export to Excel">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Excel
+                                    </button>
+                                </div>
+                                ${session.status === 'live' ? `
+                                    <button onclick="endSession('${session.sessionId}', '${session.handle}')" class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                                        End Now
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function viewSession(sessionId) {
+            window.location.href = `/session-view?sessionId=${sessionId}`;
+        }
+
+        async function exportSessionExcel(sessionId) {
+            try {
+                // Create a link to download the file
+                const link = document.createElement('a');
+                link.href = `/api/live/sessions/${sessionId}/export/excel`;
+                link.download = `session_${sessionId.substring(0, 8)}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success message
+                if (window.showSuccess) {
+                    showSuccess('Export started! File will download shortly.');
+                } else {
+                    console.log('Export started!');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                if (window.showError) {
+                    showError('Error exporting to Excel. Please try again.');
+                } else {
+                    alert('Error exporting to Excel. Please try again.');
+                }
+            }
+        }
+
+        async function endSession(sessionId, handle) {
+            if (!confirm(`Are you sure you want to end the live session for @${handle}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/live/sessions/${sessionId}/end`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to end session');
+                }
+
+                const result = await response.json();
+                if (window.showSuccess) {
+                    showSuccess(`Session ended successfully for @${handle}`);
+                } else {
+                    alert(`Session ended successfully for @${handle}`);
+                }
+                loadSessions(); // Refresh the list
+            } catch (error) {
+                console.error('Error ending session:', error);
+                if (window.showError) {
+                    showError(`Error ending session: ${error.message}`);
+                } else {
+                    alert(`Error ending session: ${error.message}`);
+                }
+            }
+        }
+
+        function formatDateTime(date) {
+            if (!date) return 'N/A';
+            const dateObj = date instanceof Date ? date : new Date(date);
+            if (isNaN(dateObj.getTime())) return 'N/A';
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load accounts and sessions on page load
+        loadAccounts();
+        loadSessions();
+    </script>
+</body>
+</html>

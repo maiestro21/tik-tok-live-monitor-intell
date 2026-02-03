@@ -1,0 +1,211 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'alerts-rules' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Alert Rules</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Manage Trigger Words & Severity</p>
+                    </div>
+                    <a href="/alerts" class="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                        ← Back to Alerts
+                    </a>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Wildcard Examples Info -->
+                <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                    <h3 class="text-sm font-semibold text-blue-900 mb-2">Wildcard Patterns</h3>
+                    <p class="text-xs text-blue-800 mb-2">Use wildcards to match flexible patterns:</p>
+                    <div class="space-y-1 text-xs text-blue-700">
+                        <div><code class="px-1.5 py-0.5 bg-blue-100 rounded">*</code> = Any characters (0 or more) - Example: <code class="px-1.5 py-0.5 bg-blue-100 rounded">*llo*</code> matches "hello", "yellow", "allocation"</div>
+                        <div><code class="px-1.5 py-0.5 bg-blue-100 rounded">%</code> = Any symbol (non-alphanumeric) - Example: <code class="px-1.5 py-0.5 bg-blue-100 rounded">%ive</code> matches "!ive", "@ive", "#ive"</div>
+                        <div class="mt-2 font-medium">More examples:</div>
+                        <ul class="list-disc list-inside ml-2 space-y-0.5">
+                            <li><code class="px-1.5 py-0.5 bg-blue-100 rounded">*ive</code> - Ends with "ive" (matches "live", "give", "forgive")</li>
+                            <li><code class="px-1.5 py-0.5 bg-blue-100 rounded">%ive*</code> - Symbol followed by "ive" and anything (matches "!ive now", "@ive123")</li>
+                            <li><code class="px-1.5 py-0.5 bg-blue-100 rounded">*llo*</code> - Contains "llo" (matches "hello", "yellow", "allocation")</li>
+                            <li><code class="px-1.5 py-0.5 bg-blue-100 rounded">test%</code> - "test" followed by a symbol (matches "test!", "test@", "test#")</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Add Trigger Word Form -->
+                <div class="bg-white border border-gray-200 rounded p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Add New Trigger Word</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input type="text" id="triggerWordInput" placeholder="Enter trigger word (supports * and %)" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="severitySelect" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                        <button onclick="addTriggerWord()" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors">
+                            Add Trigger Word
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Note: All trigger words are case-insensitive (searches match both uppercase and lowercase).</p>
+                </div>
+
+                <!-- Trigger Words Table -->
+                <div class="bg-white border border-gray-200 rounded overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-sm font-semibold text-gray-900">Trigger Words</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Word</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="triggerWordsTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
+                        <strong>Note:</strong> All trigger words are saved in lowercase and match messages regardless of case (case-insensitive). Wildcards (* and %) are supported.
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module">
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async post(url, data) {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async delete(url) {
+                const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function loadTriggerWords() {
+            try {
+                const words = await api.get('/api/alerts/trigger-words');
+                const tbody = document.getElementById('triggerWordsTableBody');
+                
+                if (words.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">No trigger words yet. Add one above.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = words.map(word => {
+                    const severityClass = {
+                        low: 'bg-blue-100 text-blue-800',
+                        medium: 'bg-yellow-100 text-yellow-800',
+                        high: 'bg-red-100 text-red-800'
+                    }[word.severity?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+                    
+                    const createdAt = word.createdAt ? new Date(word.createdAt).toLocaleDateString() : 'N/A';
+                    
+                    const hasWildcards = word.word.includes('*') || word.word.includes('%');
+                    const wildcardBadge = hasWildcards ? '<span class="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded" title="Contains wildcards">*</span>' : '';
+                    
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 font-medium text-gray-900">
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs">${escapeHtml(word.word)}</code>${wildcardBadge}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 text-xs font-medium rounded ${severityClass}">
+                                    ${(word.severity || 'medium').toUpperCase()}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-600">${createdAt}</td>
+                            <td class="px-4 py-3">
+                                <button onclick="deleteTriggerWord('${word.id}')" class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Load trigger words error:', error);
+                document.getElementById('triggerWordsTableBody').innerHTML = 
+                    `<tr><td colspan="4" class="px-4 py-4 text-center text-red-600">Error: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function addTriggerWord() {
+            const input = document.getElementById('triggerWordInput');
+            const severitySelect = document.getElementById('severitySelect');
+            
+            const word = input.value.trim();
+            if (!word) {
+                if (window.showError) showError('Please enter a trigger word');
+                else alert('Please enter a trigger word');
+                return;
+            }
+            
+            try {
+                await api.post('/api/alerts/trigger-words', {
+                    word,
+                    severity: severitySelect.value
+                });
+                input.value = '';
+                await loadTriggerWords();
+                if (window.showSuccess) showSuccess('Trigger word added successfully');
+            } catch (error) {
+                const errorMsg = error.message.includes('already exists') 
+                    ? 'This trigger word already exists'
+                    : `Failed to add trigger word: ${error.message}`;
+                if (window.showError) showError(errorMsg);
+                else alert(errorMsg);
+            }
+        }
+
+        async function deleteTriggerWord(id) {
+            if (!confirm('Are you sure you want to delete this trigger word?')) return;
+            try {
+                await api.delete(`/api/alerts/trigger-words/${id}`);
+                await loadTriggerWords();
+                if (window.showSuccess) showSuccess('Trigger word deleted successfully');
+            } catch (error) {
+                if (window.showError) showError(`Failed to delete: ${error.message}`);
+                else alert(`Failed to delete: ${error.message}`);
+            }
+        }
+
+        window.addTriggerWord = addTriggerWord;
+        window.deleteTriggerWord = deleteTriggerWord;
+
+        // Allow Enter key to submit
+        document.getElementById('triggerWordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTriggerWord();
+        });
+
+        loadTriggerWords();
+    </script>
+<%- include('partials/footer') %>

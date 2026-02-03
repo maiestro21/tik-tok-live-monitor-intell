@@ -1,0 +1,464 @@
+<%- include('partials/head') %>
+<%- include('partials/toast-notifications') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'search-all' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Search All</h1>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Business Intelligence & Chat Analysis</p>
+                    </div>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Filters -->
+                <div class="bg-white border border-gray-200 rounded p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Search Filters</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                        <!-- Account Filter -->
+                        <select id="accountFilter" class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Accounts</option>
+                        </select>
+                        
+                        <!-- Date Range -->
+                        <div class="flex gap-2">
+                            <input type="date" id="dateFrom" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="From">
+                            <input type="date" id="dateTo" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="To">
+                        </div>
+                        
+                        <!-- Username with Autocomplete -->
+                        <div class="relative">
+                            <input type="text" id="usernameFilter" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                   placeholder="@username (autocomplete)"
+                                   autocomplete="off">
+                            <div id="autocompleteDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto"></div>
+                        </div>
+                        
+                        <!-- Keyword Search -->
+                        <input type="text" id="keywordFilter" 
+                               class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                               placeholder="Keyword (message, username, nickname)">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="searchBtn" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors">
+                            Search
+                        </button>
+                        <button id="resetBtn" class="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors">
+                            Reset
+                        </button>
+                        <button id="downloadExcelBtn" class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="bg-white border border-gray-200 rounded overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-sm font-semibold text-gray-900">Search Results</h3>
+                        <p id="resultsCount" class="text-xs text-gray-500 mt-1">No search performed yet</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Session Account</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Nickname</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">Enter search criteria and click Search</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Conversation Modal (similar to alerts) -->
+    <div id="conversationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="closeConversationModal()">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Conversation Context</h3>
+                <button onclick="closeConversationModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="conversationContent" class="flex-1 overflow-y-auto p-6 space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        const api = {
+            async get(url) {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            },
+            async post(url, data) {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error(await res.text());
+                return res.json();
+            }
+        };
+
+        let autocompleteTimeout = null;
+        let currentSearchKeyword = '';
+
+        // Load accounts for filter
+        async function loadAccounts() {
+            try {
+                const accounts = await api.get('/api/search-all/accounts');
+                const select = document.getElementById('accountFilter');
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.handle;
+                    option.textContent = `@${account.handle}${account.nickname ? ` - ${account.nickname}` : ''}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Load accounts error:', error);
+            }
+        }
+
+        // Autocomplete for username
+        document.getElementById('usernameFilter').addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(autocompleteTimeout);
+            
+            if (query.length < 2) {
+                document.getElementById('autocompleteDropdown').classList.add('hidden');
+                return;
+            }
+            
+            autocompleteTimeout = setTimeout(async () => {
+                try {
+                    const suggestions = await api.get(`/api/search-all/autocomplete?q=${encodeURIComponent(query)}`);
+                    const dropdown = document.getElementById('autocompleteDropdown');
+                    
+                    if (suggestions.length === 0) {
+                        dropdown.classList.add('hidden');
+                        return;
+                    }
+                    
+                    dropdown.innerHTML = suggestions.map(s => `
+                        <div class="px-3 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectUsername('${s.uniqueId}', '${(s.nickname || s.uniqueId).replace(/'/g, "\\'")}')">
+                            <div class="font-medium">@${s.uniqueId}</div>
+                            ${s.nickname && s.nickname !== s.uniqueId ? `<div class="text-xs text-gray-500">${s.nickname}</div>` : ''}
+                        </div>
+                    `).join('');
+                    dropdown.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Autocomplete error:', error);
+                }
+            }, 300);
+        });
+
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#usernameFilter') && !e.target.closest('#autocompleteDropdown')) {
+                document.getElementById('autocompleteDropdown').classList.add('hidden');
+            }
+        });
+
+        function selectUsername(uniqueId, nickname) {
+            document.getElementById('usernameFilter').value = `@${uniqueId}`;
+            document.getElementById('autocompleteDropdown').classList.add('hidden');
+        }
+
+        window.selectUsername = selectUsername;
+
+        // Search function
+        async function performSearch() {
+            const accountHandle = document.getElementById('accountFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const username = document.getElementById('usernameFilter').value;
+            const keyword = document.getElementById('keywordFilter').value;
+            
+            currentSearchKeyword = keyword;
+            
+            let url = '/api/search-all/search?';
+            const params = new URLSearchParams();
+            if (accountHandle) params.append('accountHandle', accountHandle);
+            if (dateFrom) params.append('dateFrom', dateFrom);
+            if (dateTo) params.append('dateTo', dateTo);
+            if (username) params.append('username', username);
+            if (keyword) params.append('keyword', keyword);
+            
+            url += params.toString();
+            
+            const searchBtn = document.getElementById('searchBtn');
+            const originalText = searchBtn.textContent;
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
+            
+            try {
+                const results = await api.get(url);
+                displayResults(results);
+                document.getElementById('resultsCount').textContent = `Found ${results.length} message(s)`;
+            } catch (error) {
+                console.error('Search error:', error);
+                if (window.showError) showError(`Search failed: ${error.message}`);
+                else alert(`Search failed: ${error.message}`);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = originalText;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function normalizeDiacritics(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        function highlightText(text, keyword) {
+            if (!keyword || !text) return escapeHtml(text);
+            
+            const normalizedText = normalizeDiacritics(text);
+            const normalizedKeyword = normalizeDiacritics(keyword);
+            
+            if (!normalizedText.includes(normalizedKeyword)) return escapeHtml(text);
+            
+            const escapedText = escapeHtml(text);
+            const regex = new RegExp(`(${escapeRegex(normalizeDiacritics(keyword))})`, 'gi');
+            
+            // Find all matches with their positions
+            const matches = [];
+            let match;
+            const textLower = normalizedText;
+            const keywordLower = normalizedKeyword;
+            let index = 0;
+            
+            while ((index = textLower.indexOf(keywordLower, index)) !== -1) {
+                matches.push({ start: index, end: index + keywordLower.length });
+                index += keywordLower.length;
+            }
+            
+            // Build highlighted text
+            let result = '';
+            let lastIndex = 0;
+            
+            matches.forEach(match => {
+                result += escapedText.substring(lastIndex, match.start);
+                const matchText = escapedText.substring(match.start, match.end);
+                result += `<mark class="bg-yellow-300 text-gray-900 px-0.5 rounded font-semibold">${matchText}</mark>`;
+                lastIndex = match.end;
+            });
+            
+            result += escapedText.substring(lastIndex);
+            return result;
+        }
+
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function displayResults(results) {
+            const tbody = document.getElementById('resultsTableBody');
+            
+            if (results.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">No results found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = results.map(msg => {
+                const messagePreview = msg.message.length > 50 
+                    ? msg.message.substring(0, 50) + '...' 
+                    : msg.message;
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 text-gray-900">${new Date(msg.timestamp).toLocaleString()}</td>
+                        <td class="px-3 py-2 font-medium text-gray-900">@${escapeHtml(msg.sessionHandle)}</td>
+                        <td class="px-3 py-2 font-medium text-gray-900">@${escapeHtml(msg.uniqueId)}</td>
+                        <td class="px-3 py-2 text-gray-600">${escapeHtml(msg.nickname)}</td>
+                        <td class="px-3 py-2 text-gray-600" title="${escapeHtml(msg.message)}">
+                            ${highlightText(messagePreview, currentSearchKeyword)}
+                        </td>
+                        <td class="px-3 py-2">
+                            <button onclick="viewConversation('${msg.sessionId}', '${msg.id}', '${escapeHtml(msg.message).replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${escapeHtml(msg.uniqueId).replace(/'/g, "\\'")}')" 
+                                    class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function viewConversation(sessionId, messageId, messageText, username) {
+            const modal = document.getElementById('conversationModal');
+            const content = document.getElementById('conversationContent');
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="text-center text-gray-500 py-8">Loading conversation...</div>';
+
+            try {
+                const events = await api.get(`/api/live/sessions/${sessionId}/events?type=chat`);
+                
+                // Sort chronologically
+                events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                // Find the target message
+                const targetMessage = events.find(e => e.id === messageId);
+                if (!targetMessage) {
+                    content.innerHTML = '<div class="text-center text-red-600 py-8">Message not found in conversation</div>';
+                    return;
+                }
+                
+                // Render conversation
+                let html = '<div class="space-y-2">';
+                events.forEach(event => {
+                    const userData = event.user || {};
+                    const eventData = event.data || {};
+                    const isTarget = event.id === messageId;
+                    const message = eventData.comment || eventData.message || '';
+                    
+                    html += `
+                        <div class="p-3 rounded ${isTarget ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'} ${isTarget ? 'ring-2 ring-yellow-400 animate-pulse' : ''}" id="msg-${event.id}">
+                            <div class="flex items-start gap-2">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-medium text-gray-900">@${escapeHtml(userData.uniqueId || 'unknown')}</span>
+                                        ${userData.nickname && userData.nickname !== userData.uniqueId ? `<span class="text-sm text-gray-600">(${escapeHtml(userData.nickname)})</span>` : ''}
+                                        <span class="text-xs text-gray-500">${new Date(event.timestamp).toLocaleString()}</span>
+                                        ${isTarget ? '<span class="px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded">ALERT</span>' : ''}
+                                    </div>
+                                    <div class="text-gray-800">${highlightText(message, currentSearchKeyword)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                content.innerHTML = html;
+                
+                // Scroll to target message
+                setTimeout(() => {
+                    const targetElement = document.getElementById(`msg-${messageId}`);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+                content.innerHTML = `<div class="text-center text-red-600 py-8">Error loading conversation: ${error.message}</div>`;
+            }
+        }
+
+        function closeConversationModal() {
+            document.getElementById('conversationModal').classList.add('hidden');
+        }
+
+        function resetFilters() {
+            document.getElementById('accountFilter').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('usernameFilter').value = '';
+            document.getElementById('keywordFilter').value = '';
+            document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">Enter search criteria and click Search</td></tr>';
+            document.getElementById('resultsCount').textContent = 'No search performed yet';
+            currentSearchKeyword = '';
+        }
+
+        async function downloadExcel() {
+            const button = document.getElementById('downloadExcelBtn');
+            const originalHtml = button.innerHTML;
+            
+            try {
+                const accountHandle = document.getElementById('accountFilter').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                const username = document.getElementById('usernameFilter').value;
+                const keyword = document.getElementById('keywordFilter').value;
+                
+                let url = '/api/search-all/export/excel?';
+                const params = new URLSearchParams();
+                if (accountHandle) params.append('accountHandle', accountHandle);
+                if (dateFrom) params.append('dateFrom', dateFrom);
+                if (dateTo) params.append('dateTo', dateTo);
+                if (username) params.append('username', username);
+                if (keyword) params.append('keyword', keyword);
+                
+                url += params.toString();
+                
+                button.disabled = true;
+                button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Downloading...';
+                
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to export results');
+                }
+                
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `search_results_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+                
+                if (window.showSuccess) showSuccess('Results exported to Excel successfully');
+            } catch (error) {
+                console.error('Download Excel error:', error);
+                if (window.showError) showError(`Failed to export: ${error.message}`);
+                else alert(`Failed to export: ${error.message}`);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+        }
+
+        window.viewConversation = viewConversation;
+        window.closeConversationModal = closeConversationModal;
+
+        // Event listeners
+        document.getElementById('searchBtn').addEventListener('click', performSearch);
+        document.getElementById('resetBtn').addEventListener('click', resetFilters);
+        document.getElementById('downloadExcelBtn').addEventListener('click', downloadExcel);
+
+        // Allow Enter key to search
+        document.getElementById('keywordFilter').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+        document.getElementById('usernameFilter').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // Initialize
+        loadAccounts();
+    </script>
+<%- include('partials/footer') %>

@@ -1,0 +1,151 @@
+<%- include('partials/head') %>
+    <div class="flex h-screen overflow-hidden">
+        <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'users' }) %>
+
+        <div class="flex-1 flex flex-col overflow-hidden ml-56">
+            <%- include('partials/warning-banner') %>
+            <header class="bg-white border-b border-gray-200 px-4 py-2"><h1 class="text-lg font-semibold text-gray-900">User Management</h1></header>
+            <main class="flex-1 overflow-y-auto p-3 space-y-3">
+                <div class="bg-white border border-gray-200 rounded p-3">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Add User</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newUsername" placeholder="Username" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm">
+                        <input type="password" id="newPassword" placeholder="Password" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm">
+                        <button onclick="addUser()" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800">Add User</button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded overflow-hidden">
+                    <div class="px-3 py-2 border-b border-gray-200"><h3 class="text-sm font-semibold text-gray-900">Users</h3></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="3" class="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="passwordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 uppercase tracking-wide mb-1">New Password</label>
+                    <input type="password" id="newPasswordInput" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="changePassword()" class="flex-1 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800">Change</button>
+                    <button onclick="closePasswordModal()" class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded hover:bg-gray-50">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let currentUserId = null;
+
+        async function loadUsers() {
+            try {
+                const users = await api.get('/users');
+                const tbody = document.getElementById('usersTableBody');
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500">No users yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(user => `
+                    <tr class="table-row">
+                        <td class="px-3 py-2 font-medium text-gray-900">${user.username}</td>
+                        <td class="px-3 py-2 text-gray-600 metric-value">${new Date(user.createdAt).toLocaleString()}</td>
+                        <td class="px-3 py-2">
+                            <button onclick="openPasswordModal('${user.id}')" class="px-2 py-1 text-xs bg-blue-600 text-white rounded mr-1">Change Password</button>
+                            <button onclick="deleteUser('${user.id}', '${user.username}')" class="px-2 py-1 text-xs bg-red-600 text-white rounded">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) { console.error('Load users error:', error); }
+        }
+
+        async function addUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value;
+            if (!username || !password) { 
+                if (window.showWarning) showWarning('Username and password are required');
+                else alert('Username and password are required');
+                return; 
+            }
+            try {
+                await api.post('/users', { username, password });
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                await loadUsers();
+                if (window.showSuccess) showSuccess('User created successfully');
+                else alert('User created successfully');
+            } catch (error) { 
+                if (window.showError) showError(`Failed to create user: ${error.message}`);
+                else alert(`Failed to create user: ${error.message}`);
+            }
+        }
+
+        function openPasswordModal(userId) {
+            currentUserId = userId;
+            document.getElementById('passwordModal').classList.remove('hidden');
+            document.getElementById('newPasswordInput').value = '';
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
+            currentUserId = null;
+        }
+
+        async function changePassword() {
+            const password = document.getElementById('newPasswordInput').value;
+            if (!password) { 
+                if (window.showWarning) showWarning('Password is required');
+                else alert('Password is required');
+                return; 
+            }
+            if (!currentUserId) return;
+            try {
+                await api.put(`/users/${currentUserId}/password`, { password });
+                closePasswordModal();
+                if (window.showSuccess) showSuccess('Password changed successfully');
+                else alert('Password changed successfully');
+            } catch (error) { 
+                if (window.showError) showError(`Failed to change password: ${error.message}`);
+                else alert(`Failed to change password: ${error.message}`);
+            }
+        }
+
+        async function deleteUser(id, username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+            try { 
+                await api.delete(`/users/${id}`); 
+                await loadUsers();
+                if (window.showSuccess) showSuccess('User deleted successfully');
+                else alert('User deleted successfully');
+            } catch (error) { 
+                if (window.showError) showError(`Failed to delete user: ${error.message}`);
+                else alert(`Failed to delete user: ${error.message}`);
+            }
+        }
+
+        window.addUser = addUser;
+        window.openPasswordModal = openPasswordModal;
+        window.closePasswordModal = closePasswordModal;
+        window.changePassword = changePassword;
+        window.deleteUser = deleteUser;
+
+        loadUsers();
+    </script>
+<%- include('partials/footer') %>

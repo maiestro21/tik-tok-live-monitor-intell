@@ -1,0 +1,114 @@
+<!-- TikTok Block Warning Banner -->
+<div id="blockWarningBanner" class="hidden bg-yellow-600 border-b border-yellow-700 px-4 py-3">
+    <div class="flex items-start justify-between gap-4">
+        <div class="flex items-start gap-3 flex-1">
+            <svg class="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-white mb-1">⚠️ TikTok Block Detected</p>
+                <div class="text-xs text-yellow-100 space-y-1" id="blockWarningContent">
+                    <p id="blockWarningMessage">Loading block information...</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-start gap-2 flex-shrink-0">
+            <button onclick="dismissAllWarnings()" class="px-3 py-1.5 text-xs bg-white text-yellow-700 rounded hover:bg-yellow-50 transition-colors font-medium">
+                Dismiss
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Check for TikTok blocks on page load and periodically
+    async function checkBlockStatus() {
+        try {
+            const res = await fetch('/api/blocks/status', { credentials: 'include' });
+            if (!res.ok) return;
+            
+            const data = await res.json();
+            const banner = document.getElementById('blockWarningBanner');
+            const contentEl = document.getElementById('blockWarningContent');
+            
+            if (data.hasActiveBlocks && data.activeBlocks.length > 0) {
+                // Show banner
+                banner.classList.remove('hidden');
+                
+                // Build detailed message with cooldown info
+                let messageHtml = '';
+                
+                data.activeBlocks.forEach((block, index) => {
+                    const remaining = block.remainingCooldownMinutes || 0;
+                    const hours = Math.floor(remaining / 60);
+                    const minutes = remaining % 60;
+                    const remainingText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    
+                    messageHtml += `
+                        <div class="border-l-2 border-yellow-400 pl-2 mb-2">
+                            <p class="font-medium">@${escapeHtml(block.handle)}</p>
+                            <p>Cooldown: <span class="metric-value font-medium">${remainingText}</span> remaining</p>
+                            <p class="text-yellow-200">Block count: ${block.blockCount || 1} (Cooldown: ${block.cooldownHours || 1}h)</p>
+                        </div>
+                    `;
+                });
+                
+                messageHtml += `
+                    <div class="mt-2 pt-2 border-t border-yellow-500/30">
+                        <p class="font-medium mb-1">Recommendations:</p>
+                        <ul class="list-disc list-inside space-y-0.5 text-yellow-200">
+                            <li>Wait for cooldown period to expire before retrying</li>
+                            <li>Monitoring is automatically paused for blocked accounts</li>
+                            <li>System will test recovery automatically</li>
+                            <li>Consider reducing monitoring frequency if blocks persist</li>
+                        </ul>
+                    </div>
+                `;
+                
+                contentEl.innerHTML = messageHtml;
+            } else {
+                // Hide banner
+                banner.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error checking block status:', error);
+        }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function dismissAllWarnings() {
+        try {
+            const res = await fetch('/api/blocks/status', { credentials: 'include' });
+            if (!res.ok) return;
+            
+            const data = await res.json();
+            
+            // Dismiss all active blocks
+            for (const block of data.activeBlocks) {
+                await fetch(`/api/blocks/${block.handle}/dismiss`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            }
+            
+            // Hide banner
+            document.getElementById('blockWarningBanner').classList.add('hidden');
+        } catch (error) {
+            console.error('Error dismissing warnings:', error);
+            if (window.showError) showError('Error dismissing warnings: ' + error.message);
+            else alert('Error dismissing warnings: ' + error.message);
+        }
+    }
+
+    // Check on page load
+    checkBlockStatus();
+    
+    // Check every 30 seconds
+    setInterval(checkBlockStatus, 30000);
+</script>
