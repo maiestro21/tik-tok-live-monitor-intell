@@ -1,6 +1,7 @@
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const { read, write, append } = require('../storage/dbStorage');
+const { query } = require('../config/database');
 
 /**
  * Fetch TikTok user profile by handle using web scraping approach
@@ -15,8 +16,11 @@ async function fetchUserProfile(handle) {
         // Note: This may break if TikTok changes their API structure
         const url = `https://www.tiktok.com/@${cleanHandle}`;
         
+        // Use saved session for profiles with audience controls
+        const session = await getValidSession();
+        
         // Fetch the page HTML
-        const html = await fetchPage(url);
+        const html = await fetchPage(url, session);
         
         // Parse user data from the page
         // TikTok embeds user data in a script tag with type="application/json"
@@ -71,9 +75,30 @@ async function fetchUserProfile(handle) {
 }
 
 /**
+ * Get valid TikTok session from database (for profiles with audience controls)
+ */
+async function getValidSession() {
+    try {
+        const result = await query(
+            'SELECT session_id, tt_target_idc, valid_until FROM tiktok_session WHERE id = 1'
+        );
+        const row = result.rows[0];
+        if (!row?.session_id || !row.valid_until || new Date(row.valid_until) <= new Date()) {
+            return null;
+        }
+        return {
+            sessionId: row.session_id,
+            ttTargetIdc: row.tt_target_idc || null
+        };
+    } catch (err) {
+        return null;
+    }
+}
+
+/**
  * Fetch HTML page content
  */
-function fetchPage(url) {
+function fetchPage(url, cookieOptions = null) {
     return new Promise((resolve, reject) => {
         // Add query parameters similar to bash script
         const urlObj = new URL(url);
@@ -82,16 +107,25 @@ function fetchPage(url) {
             urlObj.searchParams.set('isSecured', 'true');
         }
         const finalUrl = urlObj.toString();
-        
-        https.get(finalUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
+
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        };
+        if (cookieOptions?.sessionId) {
+            let cookieStr = `sessionid=${cookieOptions.sessionId}`;
+            if (cookieOptions.ttTargetIdc) {
+                cookieStr += `; tt-target-idc=${cookieOptions.ttTargetIdc}`;
             }
+            headers['Cookie'] = cookieStr;
+        }
+
+        https.get(finalUrl, {
+            headers
         }, (res) => {
             let data = '';
             
@@ -422,8 +456,9 @@ async function fetchUserActivity(handle) {
         const cleanHandle = handle.replace('@', '');
         const url = `https://www.tiktok.com/@${cleanHandle}`;
         
+        const session = await getValidSession();
         console.log(`[Activity] Fetching activity for @${cleanHandle}...`);
-        const html = await fetchPage(url);
+        const html = await fetchPage(url, session);
         console.log(`[Activity] HTML length: ${html.length} characters`);
         
         const videos = parseVideosFromHTML(html);

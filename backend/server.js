@@ -59,6 +59,8 @@ app.use('/api/blocks', require('./routes/blocks'));
 app.use('/api/anti-blocking', require('./routes/anti-blocking'));
 app.use('/api/osint', require('./routes/osint'));
 app.use('/api/search-all', require('./routes/search-all'));
+app.use('/api/user-activity', require('./routes/user-activity'));
+app.use('/api/sessions', require('./routes/sessions'));
 
 // View Routes
 app.use('/', require('./routes/views'));

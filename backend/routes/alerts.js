@@ -17,13 +17,13 @@ router.get('/', async (req, res) => {
         const { status, severity, handle, dateFrom, dateTo, triggerWord } = req.query;
         const { query } = require('../config/database');
         
-        // Build query with filters
-        let sqlQuery = 'SELECT * FROM alerts WHERE 1=1';
+        // Build query with filters (LEFT JOIN events for posted_by_username)
+        let sqlQuery = 'SELECT a.*, e.user_data->>\'uniqueId\' AS posted_by_username FROM alerts a LEFT JOIN events e ON a.event_id = e.id WHERE 1=1';
         const params = [];
         let paramIndex = 1;
         
         if (status) {
-            sqlQuery += ` AND status = $${paramIndex}`;
+            sqlQuery += ` AND a.status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
         }
@@ -32,22 +32,22 @@ router.get('/', async (req, res) => {
             // Normalize severity (low, medium, high -> LOW, MED, MEDIUM, HIGH)
             const severityUpper = severity.toUpperCase();
             if (severityUpper === 'MED') {
-                sqlQuery += ` AND (severity = 'MED' OR severity = 'MEDIUM')`;
+                sqlQuery += ` AND (a.severity = 'MED' OR a.severity = 'MEDIUM')`;
             } else {
-                sqlQuery += ` AND severity = $${paramIndex}`;
+                sqlQuery += ` AND a.severity = $${paramIndex}`;
                 params.push(severityUpper);
                 paramIndex++;
             }
         }
         
         if (handle) {
-            sqlQuery += ` AND handle = $${paramIndex}`;
+            sqlQuery += ` AND a.handle = $${paramIndex}`;
             params.push(handle.replace('@', ''));
             paramIndex++;
         }
         
         if (dateFrom) {
-            sqlQuery += ` AND timestamp >= $${paramIndex}`;
+            sqlQuery += ` AND a.timestamp >= $${paramIndex}`;
             params.push(new Date(dateFrom).toISOString());
             paramIndex++;
         }
@@ -56,20 +56,27 @@ router.get('/', async (req, res) => {
             // Add one day to include the entire end date
             const endDate = new Date(dateTo);
             endDate.setHours(23, 59, 59, 999);
-            sqlQuery += ` AND timestamp <= $${paramIndex}`;
+            sqlQuery += ` AND a.timestamp <= $${paramIndex}`;
             params.push(endDate.toISOString());
             paramIndex++;
         }
         
         if (triggerWord) {
-            sqlQuery += ` AND type = $${paramIndex}`;
+            sqlQuery += ` AND a.type = $${paramIndex}`;
             params.push(triggerWord);
             paramIndex++;
         }
         
-        sqlQuery += ' ORDER BY timestamp DESC';
+        sqlQuery += ' ORDER BY a.timestamp DESC';
         
         const result = await query(sqlQuery, params);
+        
+        // Strip legacy "Trigger word X found in message: " prefix from message for display
+        const stripMessagePrefix = (msg) => {
+            if (!msg || typeof msg !== 'string') return msg || '';
+            const match = msg.match(/^Trigger word "[^"]*" found in message: (.+)$/s);
+            return match ? match[1] : msg;
+        };
         
         // Convert database rows to JSON format
         const alerts = result.rows.map(row => ({
@@ -78,10 +85,11 @@ router.get('/', async (req, res) => {
             sessionId: row.session_id,
             eventId: row.event_id,
             triggerWord: row.type, // type contains trigger word
+            postedByUsername: row.posted_by_username || null,
             timestamp: row.timestamp.toISOString(),
             severity: row.severity.toLowerCase(),
             status: row.status,
-            message: row.message,
+            message: stripMessagePrefix(row.message),
             acknowledgedAt: row.acknowledged_at ? row.acknowledged_at.toISOString() : null,
             resolvedAt: row.resolved_at ? row.resolved_at.toISOString() : null
         }));
@@ -103,13 +111,13 @@ router.get('/export/excel', async (req, res) => {
         const { status, severity, handle, dateFrom, dateTo, triggerWord } = req.query;
         const { query } = require('../config/database');
         
-        // Build query with filters (same as GET /api/alerts)
-        let sqlQuery = 'SELECT * FROM alerts WHERE 1=1';
+        // Build query with filters (same as GET /api/alerts, JOIN for posted_by_username)
+        let sqlQuery = 'SELECT a.*, e.user_data->>\'uniqueId\' AS posted_by_username FROM alerts a LEFT JOIN events e ON a.event_id = e.id WHERE 1=1';
         const params = [];
         let paramIndex = 1;
         
         if (status) {
-            sqlQuery += ` AND status = $${paramIndex}`;
+            sqlQuery += ` AND a.status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
         }
@@ -117,22 +125,22 @@ router.get('/export/excel', async (req, res) => {
         if (severity) {
             const severityUpper = severity.toUpperCase();
             if (severityUpper === 'MED') {
-                sqlQuery += ` AND (severity = 'MED' OR severity = 'MEDIUM')`;
+                sqlQuery += ` AND (a.severity = 'MED' OR a.severity = 'MEDIUM')`;
             } else {
-                sqlQuery += ` AND severity = $${paramIndex}`;
+                sqlQuery += ` AND a.severity = $${paramIndex}`;
                 params.push(severityUpper);
                 paramIndex++;
             }
         }
         
         if (handle) {
-            sqlQuery += ` AND handle = $${paramIndex}`;
+            sqlQuery += ` AND a.handle = $${paramIndex}`;
             params.push(handle.replace('@', ''));
             paramIndex++;
         }
         
         if (dateFrom) {
-            sqlQuery += ` AND timestamp >= $${paramIndex}`;
+            sqlQuery += ` AND a.timestamp >= $${paramIndex}`;
             params.push(new Date(dateFrom).toISOString());
             paramIndex++;
         }
@@ -140,20 +148,27 @@ router.get('/export/excel', async (req, res) => {
         if (dateTo) {
             const endDate = new Date(dateTo);
             endDate.setHours(23, 59, 59, 999);
-            sqlQuery += ` AND timestamp <= $${paramIndex}`;
+            sqlQuery += ` AND a.timestamp <= $${paramIndex}`;
             params.push(endDate.toISOString());
             paramIndex++;
         }
         
         if (triggerWord) {
-            sqlQuery += ` AND type = $${paramIndex}`;
+            sqlQuery += ` AND a.type = $${paramIndex}`;
             params.push(triggerWord);
             paramIndex++;
         }
         
-        sqlQuery += ' ORDER BY timestamp DESC';
+        sqlQuery += ' ORDER BY a.timestamp DESC';
         
         const result = await query(sqlQuery, params);
+        
+        // Strip legacy "Trigger word X found in message: " prefix from message
+        const stripMessagePrefix = (msg) => {
+            if (!msg || typeof msg !== 'string') return msg || '';
+            const match = msg.match(/^Trigger word "[^"]*" found in message: (.+)$/s);
+            return match ? match[1] : msg;
+        };
         
         // Create Excel workbook
         const workbook = new ExcelJS.Workbook();
@@ -164,6 +179,7 @@ router.get('/export/excel', async (req, res) => {
             { header: 'Time', key: 'timestamp', width: 20 },
             { header: 'Account', key: 'handle', width: 20 },
             { header: 'Trigger Word', key: 'triggerWord', width: 20 },
+            { header: 'Posted By', key: 'postedByUsername', width: 20 },
             { header: 'Message', key: 'message', width: 50 },
             { header: 'Severity', key: 'severity', width: 12 },
             { header: 'Status', key: 'status', width: 15 },
@@ -197,7 +213,8 @@ router.get('/export/excel', async (req, res) => {
                 timestamp: formatDate(row.timestamp),
                 handle: `@${row.handle}`,
                 triggerWord: row.type || 'N/A',
-                message: row.message || '',
+                postedByUsername: row.posted_by_username ? `@${row.posted_by_username}` : 'N/A',
+                message: stripMessagePrefix(row.message) || '',
                 severity: (row.severity || 'MEDIUM').toUpperCase(),
                 status: row.status || 'pending',
                 acknowledgedAt: row.acknowledged_at ? formatDate(row.acknowledged_at) : 'N/A',

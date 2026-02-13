@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS tiktok_accounts (
     nick_name_modify_time TIMESTAMPTZ,
     nick_name_modify_time_unix BIGINT,
     last_synced_at TIMESTAMPTZ,
+    use_session BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -182,6 +183,22 @@ CREATE TABLE IF NOT EXISTS anti_blocking_settings (
 -- Insert default row if it doesn't exist
 INSERT INTO anti_blocking_settings (id, settings) 
 VALUES (1, '{}')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- TIKTOK SESSION TABLE (Singleton - for captured login session)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS tiktok_session (
+    id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    session_id TEXT,
+    tt_target_idc TEXT,
+    valid_until TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Insert default row if it doesn't exist
+INSERT INTO tiktok_session (id, updated_at) 
+VALUES (1, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

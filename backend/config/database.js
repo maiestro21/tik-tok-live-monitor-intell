@@ -245,6 +245,41 @@ async function initializeDatabaseIfNeeded() {
                         console.warn('[Database Init] Index migration warning:', migrationError.message);
                     }
                 }
+
+                // Check and add use_session column to tiktok_accounts
+                const useSessionCheck = await appClient.query(`
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'tiktok_accounts' AND column_name = 'use_session'
+                `);
+                if (useSessionCheck.rows.length === 0) {
+                    console.log('[Database Init] Adding use_session column to tiktok_accounts...');
+                    await appClient.query(`
+                        ALTER TABLE tiktok_accounts ADD COLUMN use_session BOOLEAN DEFAULT FALSE
+                    `);
+                    console.log('[Database Init] ✓ Added use_session column');
+                }
+
+                // Check and create tiktok_session table
+                const tiktokSessionCheck = await appClient.query(`
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_name = 'tiktok_session'
+                `);
+                if (tiktokSessionCheck.rows.length === 0) {
+                    console.log('[Database Init] Creating tiktok_session table...');
+                    await appClient.query(`
+                        CREATE TABLE tiktok_session (
+                            id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+                            session_id TEXT,
+                            tt_target_idc TEXT,
+                            valid_until TIMESTAMPTZ,
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                        )
+                    `);
+                    await appClient.query(`
+                        INSERT INTO tiktok_session (id, updated_at) VALUES (1, NOW())
+                    `);
+                    console.log('[Database Init] ✓ Created tiktok_session table');
+                }
             } catch (migrationError) {
                 // Ignore errors if column already exists or other non-critical issues
                 if (!migrationError.message.includes('already exists') && 

@@ -7,14 +7,10 @@
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
     "create-admin": "node scripts/create-admin.js",
-    "reset": "node scripts/reset-database.js"
+    "reset": "node scripts/reset-database.js",
+    "resetdb": "node scripts/reset-database.js"
   },
-  "keywords": [
-    "tiktok",
-    "live",
-    "monitoring",
-    "intelligence"
-  ],
+  "keywords": ["tiktok", "live", "monitoring", "intelligence"],
   "author": "",
   "license": "ISC",
   "dependencies": {

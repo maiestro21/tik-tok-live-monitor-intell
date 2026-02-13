@@ -2,6 +2,7 @@ const { TikTokConnectionWrapper } = require('./connectionWrapper');
 const triggerService = require('./triggerService');
 const { v4: uuidv4 } = require('uuid');
 const { read, write, append, update, updateNested, bulkInsert } = require('../storage/dbStorage');
+const { query } = require('../config/database');
 const path = require('path');
 
 // Active connections map: handle -> connection wrapper
@@ -113,8 +114,29 @@ async function startMonitoring(handle, roomId, io) {
         // Start health checks if not already running
         startHealthChecks();
 
+        // Get session options if account has use_session enabled
+        let connectOptions = {};
+        try {
+            const accounts = await read('tiktok_accounts.json');
+            const account = Array.isArray(accounts) ? accounts.find(a => a.handle === handle) : null;
+            if (account?.useSession) {
+                const sessionResult = await query(
+                    'SELECT session_id, tt_target_idc, valid_until FROM tiktok_session WHERE id = 1'
+                );
+                const row = sessionResult.rows[0];
+                if (row?.session_id && row.valid_until && new Date(row.valid_until) > new Date()) {
+                    connectOptions = { sessionId: row.session_id };
+                    console.log(`[Live Connector] Using TikTok session for @${handle}`);
+                } else {
+                    console.warn(`[Live Connector] @${handle} - use_session enabled but no valid session (expired or not set)`);
+                }
+            }
+        } catch (err) {
+            console.warn(`[Live Connector] Error fetching session for @${handle}:`, err.message);
+        }
+
         // Create connection wrapper
-        const connectionWrapper = new TikTokConnectionWrapper(handle, {}, true);
+        const connectionWrapper = new TikTokConnectionWrapper(handle, connectOptions, true);
 
         // Connect with error handling
         connectionWrapper.connect().catch(async (err) => {

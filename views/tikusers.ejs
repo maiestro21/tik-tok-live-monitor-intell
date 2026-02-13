@@ -95,7 +95,12 @@
                             <input type="checkbox" id="editPrivateAccount" class="rounded border-gray-300">
                             <label for="editPrivateAccount" class="text-xs font-medium text-gray-700 uppercase tracking-wide">Private Account</label>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="editUseSession" class="rounded border-gray-300">
+                            <label for="editUseSession" class="text-xs font-medium text-gray-700 uppercase tracking-wide">Use Session</label>
+                        </div>
                     </div>
+                    <p class="text-xs text-gray-500 mt-2">Use Session: when enabled, monitoring will use the captured TikTok login session to bypass audience controls (see Sessions page).</p>
                 </div>
 
                 <!-- Location & Language Section -->
@@ -549,6 +554,7 @@
             document.getElementById('editVerified').checked = account.verified || account.secret || false;
             document.getElementById('editSecret').checked = account.secret || false;
             document.getElementById('editPrivateAccount').checked = account.privateAccount || false;
+            document.getElementById('editUseSession').checked = account.useSession || false;
             
             // Location & Language
             document.getElementById('editLanguage').value = account.language || '';
@@ -618,7 +624,8 @@
                     heartCount: parseInt(document.getElementById('editHeartCount').value) || 0,
                     diggCount: parseInt(document.getElementById('editDiggCount').value) || 0,
                     friendCount: parseInt(document.getElementById('editFriendCount').value) || 0,
-                    secUid: document.getElementById('editSecUid').value
+                    secUid: document.getElementById('editSecUid').value,
+                    useSession: document.getElementById('editUseSession').checked
                 };
                 
                 await api.put(`/tikusers/${currentEditHandle}`, data);

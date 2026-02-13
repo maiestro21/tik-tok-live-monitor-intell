@@ -107,6 +107,7 @@ function rowToJson(row, tableName) {
             nickNameModifyTime: json.nick_name_modify_time,
             nickNameModifyTimeUnix: json.nick_name_modify_time_unix,
             lastSyncedAt: json.last_synced_at,
+            useSession: json.use_session || false,
             createdAt: json.created_at,
             updatedAt: json.updated_at
         };
@@ -254,6 +255,7 @@ function jsonToRow(data, tableName) {
         row.nick_name_modify_time = data.nickNameModifyTime || data.nick_name_modify_time;
         row.nick_name_modify_time_unix = data.nickNameModifyTimeUnix || data.nick_name_modify_time_unix;
         row.last_synced_at = data.lastSyncedAt || data.last_synced_at;
+        row.use_session = data.useSession !== undefined ? data.useSession : (data.use_session || false);
         if (data.createdAt) row.created_at = data.createdAt;
         if (data.updatedAt) row.updated_at = data.updatedAt;
         return row;

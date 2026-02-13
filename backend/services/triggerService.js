@@ -65,7 +65,7 @@ async function checkAndCreateAlert(message, handle, sessionId, eventId, io) {
                     timestamp: new Date().toISOString(),
                     severity: trigger.severity || 'medium', // Use severity from trigger word, default to medium
                     status: 'new',
-                    message: `Trigger word "${trigger.word}" found in message: ${message.substring(0, 200)}`,
+                    message: message.substring(0, 500),
                     acknowledgedAt: null,
                     resolvedAt: null
                 };

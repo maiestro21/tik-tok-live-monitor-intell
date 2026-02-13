@@ -169,6 +169,21 @@ router.get('/logs', requireAuth, (req, res) => {
 });
 
 /**
+ * GET /sessions
+ * TikTok Session management page (protected)
+ */
+router.get('/sessions', requireAuth, (req, res) => {
+    res.render('sessions', { 
+        title: 'Sessions - T-intell',
+        currentPage: 'sessions',
+        user: {
+            id: req.session.userId,
+            username: req.session.username
+        }
+    });
+});
+
+/**
  * GET /anti-blocking
  * Anti-Blocking Settings page (protected)
  */
@@ -206,6 +221,21 @@ router.get('/search-all', requireAuth, (req, res) => {
     res.render('search-all', { 
         title: 'Search All - T-intell',
         currentPage: 'search-all',
+        user: {
+            id: req.session.userId,
+            username: req.session.username
+        }
+    });
+});
+
+/**
+ * GET /user-activity
+ * User Activity page (protected) - Track user activity across all sessions
+ */
+router.get('/user-activity', requireAuth, (req, res) => {
+    res.render('user-activity', { 
+        title: 'User Activity - T-intell',
+        currentPage: 'user-activity',
         user: {
             id: req.session.userId,
             username: req.session.username

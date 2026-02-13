@@ -262,7 +262,7 @@ router.put('/:handle', async (req, res) => {
         const changes = [];
         const editableFields = [
             'id', 'uniqueId', 'nickname', 'bio', 'signature', 'profilePictureUrl',
-            'verified', 'secret', 'privateAccount',
+            'verified', 'secret', 'privateAccount', 'useSession',
             'language', 'region',
             'followerCount', 'followingCount', 'videoCount', 'heartCount', 'diggCount', 'friendCount',
             'secUid', 'creationDate', 'uniqueIdModifyTime', 'nickNameModifyTime'

@@ -1,5 +1,6 @@
 const { WebcastPushConnection } = require('tiktok-live-connector');
 const { read, updateNested } = require('../storage/dbStorage');
+const { query } = require('../config/database');
 const liveConnectorService = require('./liveConnectorService');
 const blockTrackerService = require('./blockTrackerService');
 const settingsService = require('./settingsService');
@@ -31,7 +32,27 @@ const SESSION_END_COOLDOWN_MS = 90000; // 90 seconds default
  * TikTok allows connecting to inactive/scheduled/ghost rooms, so connection alone
  * doesn't guarantee LIVE status. We need to see actual live events.
  */
-async function checkIfLive(handle, previousRoomId = null) {
+async function getSessionOptionsForHandle(handle) {
+    try {
+        const accounts = await read('tiktok_accounts.json');
+        const account = Array.isArray(accounts) ? accounts.find(a => a.handle === handle) : null;
+        if (!account?.useSession) return null;
+        const sessionResult = await query(
+            'SELECT session_id, tt_target_idc, valid_until FROM tiktok_session WHERE id = 1'
+        );
+        const row = sessionResult.rows[0];
+        if (!row?.session_id || !row.valid_until || new Date(row.valid_until) <= new Date()) return null;
+        return { sessionId: row.session_id, ttTargetIdc: row.tt_target_idc };
+    } catch (err) {
+        console.warn(`[checkIfLive] Error fetching session for @${handle}:`, err.message);
+        return null;
+    }
+}
+
+async function checkIfLive(handle, previousRoomId = null, sessionOptions = null) {
+    if (sessionOptions === null || sessionOptions === undefined) {
+        sessionOptions = await getSessionOptionsForHandle(handle);
+    }
     const startTime = Date.now();
     const PROBE_TIMEOUT_MS = 5000; // 5 seconds to detect live events
     const MIN_PROBE_TIME_MS = 2000; // Minimum 2 seconds even if events arrive
@@ -62,8 +83,9 @@ async function checkIfLive(handle, previousRoomId = null) {
     
     try {
         // ========== PHASE 1: CONNECT ==========
-        console.log(`[DEBUG checkIfLive] @${handle} - [PHASE 1] Creating connection object...`);
-        connection = new WebcastPushConnection(handle);
+        const connectOptions = sessionOptions?.sessionId ? { sessionId: sessionOptions.sessionId } : {};
+        console.log(`[DEBUG checkIfLive] @${handle} - [PHASE 1] Creating connection object...${connectOptions.sessionId ? ' (with session)' : ''}`);
+        connection = new WebcastPushConnection(handle, connectOptions);
         
         console.log(`[DEBUG checkIfLive] @${handle} - [PHASE 1] Attempting WebSocket connection...`);
         connectedState = await connection.connect();
@@ -483,7 +505,7 @@ async function checkAccount(handle) {
                     return null;
                 }
             })() : null;
-        
+
         console.log(`[DEBUG checkAccount] @${handle} - About to call checkIfLive. Current state:`, {
             enabled: monitorStatus.enabled,
             currentLiveSessionId: monitorStatus.currentLiveSessionId,
